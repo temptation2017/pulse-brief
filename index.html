@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<meta name="theme-color" content="#000000" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<title>要知简报</title>
+<style>
+:root {
+  --bg: #000000;
+  --card: #1c1c1e;
+  --card2: #2c2c2e;
+  --text: #ffffff;
+  --muted: #8e8e93;
+  --muted2: #636366;
+  --pill: #3a3a3c;
+  --red: #ff3b30;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --nav-h: 64px;
+  --radius: 16px;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+    "Hiragino Sans GB", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  height: 100%;
+  overflow: hidden;
+}
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+a { color: inherit; }
+ol, ul { margin: 0; padding: 0; list-style: none; }
+h1, h2, p { margin: 0; }
+
+.app {
+  height: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+  background: var(--bg);
+}
+.page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.page[hidden] { display: none !important; }
+
+.scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 14px;
+  scrollbar-width: none;
+}
+.scroll::-webkit-scrollbar { display: none; }
+.bottom-spacer { height: calc(var(--nav-h) + var(--safe-b) + 24px); }
+
+/* Header — date left, actions right */
+.home-header {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 14px 14px 6px;
+  flex-shrink: 0;
+  gap: 12px;
+}
+.date-block { min-width: 0; flex: 1; }
+.date-big {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  line-height: 1.1;
+}
+.date-sub {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.3;
+}
+.header-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  padding-top: 4px;
+  flex-shrink: 0;
+}
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--card);
+  display: grid;
+  place-items: center;
+  color: #ddd;
+}
+.icon-btn.busy { opacity: 0.45; }
+
+.plaza-header, .me-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 14px 8px;
+  flex-shrink: 0;
+  gap: 12px;
+}
+.plaza-header h1, .me-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+/* Cards */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 14px 14px 8px;
+  margin-bottom: 12px;
+}
+.card-head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  gap: 8px;
+}
+.card-head h2 {
+  font-size: 17px;
+  font-weight: 700;
+}
+.card-head.sticky {
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  z-index: 2;
+  padding: 4px 0 8px;
+}
+
+.pill-play, .pill-more {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  background: var(--pill);
+  color: #eee;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.play-dot {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 5px 0 5px 8px;
+  border-color: transparent transparent transparent var(--red);
+}
+.pill-more span { opacity: 0.7; }
+
+.section-head {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 10px 2px 10px;
+  gap: 8px;
+}
+.section-head h2 {
+  font-size: 20px;
+  font-weight: 700;
+}
+.section-links {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.text-link {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.agg-label {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 8px 4px 6px;
+}
+
+/* Numbered list — dense like 要知 */
+.num-list { display: flex; flex-direction: column; }
+.num-list li {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.045);
+  cursor: pointer;
+}
+.num-list li:last-child { border-bottom: 0; }
+.num-list .n {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #2a2a2c;
+  color: #b0b0b5;
+  font-size: 11px;
+  font-weight: 650;
+  display: grid;
+  place-items: center;
+  margin-top: 2px;
+}
+.num-list .n.top {
+  background: rgba(255, 59, 48, 0.2);
+  color: #ff6961;
+}
+.num-list .t {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.42;
+  color: #f2f2f7;
+  font-weight: 450;
+}
+.num-list .sub {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 400;
+}
+
+/* Mine / source cards — default 横排 swipe */
+.mine-cards.vertical .src-card { margin-bottom: 12px; }
+.mine-cards.horizontal {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  padding: 2px 14px 10px;
+  margin: 0 -14px 8px;
+}
+.mine-cards.horizontal::-webkit-scrollbar { display: none; }
+.mine-cards.horizontal .src-card {
+  flex: 0 0 82%;
+  width: 82%;
+  max-width: 340px;
+  scroll-snap-align: center;
+  margin-bottom: 0;
+  max-height: 420px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.src-head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.src-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+.src-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.src-card .num-list .n {
+  background: transparent;
+  color: var(--muted);
+  border-radius: 0;
+  font-size: 13px;
+  width: auto;
+  height: auto;
+  font-weight: 600;
+}
+
+/* Timeline */
+.timeline {
+  position: relative;
+  padding: 4px 0 4px 16px;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 10px;
+  bottom: 14px;
+  width: 1px;
+  background: #3a3a3c;
+}
+.timeline li {
+  position: relative;
+  padding: 0 0 14px 8px;
+  cursor: pointer;
+}
+.timeline li:last-child { padding-bottom: 6px; }
+.timeline li::before {
+  content: '';
+  position: absolute;
+  left: -15px;
+  top: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid #d8d8dc;
+  background: var(--card);
+  box-sizing: border-box;
+}
+.tl-meta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 3px;
+  line-height: 1.3;
+}
+.tl-title {
+  font-size: 14.5px;
+  line-height: 1.4;
+  color: #f2f2f7;
+  font-weight: 450;
+}
+
+.foot-hint {
+  color: var(--muted2);
+  font-size: 11.5px;
+  text-align: center;
+  padding: 10px 10px 0;
+  line-height: 1.5;
+}
+
+/* Plaza */
+.chips {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  padding: 2px 14px 10px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 15px;
+  padding-bottom: 7px;
+  position: relative;
+}
+.chip.active {
+  color: #fff;
+  font-weight: 650;
+}
+.chip.active::after {
+  content: '';
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 0;
+  height: 2px;
+  background: var(--red);
+  border-radius: 2px;
+}
+.plaza-list { padding: 0 14px; }
+.plaza-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.plaza-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 13px;
+  color: #fff;
+  flex-shrink: 0;
+}
+.plaza-info { flex: 1; min-width: 0; }
+.plaza-info .name {
+  font-size: 15.5px;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.plaza-info .meta {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.btn-sub {
+  flex-shrink: 0;
+  min-width: 70px;
+  padding: 7px 12px;
+  border-radius: 9px;
+  background: var(--pill);
+  color: #eee;
+  font-size: 13px;
+  text-align: center;
+}
+.btn-sub.on { color: #a8a8ad; }
+
+/* Me */
+.avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff6b61, #8b5cf6);
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.me-sub {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.me-menu {
+  margin: 6px 14px;
+  background: var(--card);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.me-row {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 15.5px;
+  text-align: left;
+}
+.me-menu li:last-child .me-row { border-bottom: 0; }
+.me-row b { color: var(--muted); font-weight: 500; }
+.chev { color: var(--muted2); font-size: 18px; }
+
+/* Floating tab bar */
+.tabbar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(10px + var(--safe-b));
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: row;
+  gap: 2px;
+  background: rgba(44, 44, 46, 0.94);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-radius: 999px;
+  padding: 5px 6px;
+  z-index: 40;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.5);
+  max-width: calc(100vw - 28px);
+}
+.tabbar .tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 72px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: #9a9a9e;
+  font-size: 10.5px;
+}
+.tabbar .tab.active {
+  background: rgba(0,0,0,0.48);
+  color: #fff;
+}
+
+/* Sheet */
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.sheet[hidden] { display: none !important; }
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+}
+.sheet-panel {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  max-height: 82vh;
+  overflow-y: auto;
+  background: #1c1c1e;
+  border-radius: 20px 20px 0 0;
+  padding: 8px 18px calc(22px + var(--safe-b));
+  animation: slideUp 0.25s ease;
+}
+.sheet-panel.tall { max-height: 88vh; }
+@keyframes slideUp {
+  from { transform: translateY(36px); opacity: 0.65; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.sheet-grab {
+  width: 34px;
+  height: 4px;
+  border-radius: 4px;
+  background: #555;
+  margin: 4px auto 12px;
+}
+.sheet-meta {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.chip-src, .chip-hot {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--pill);
+  color: #ccc;
+}
+.chip-hot:empty { display: none; }
+#sheetTitle {
+  margin: 0 0 8px;
+  font-size: 19px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+.sheet-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.sheet-tags span {
+  font-size: 12px;
+  color: #aaa;
+  background: #2c2c2e;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.ai-box {
+  background: #111;
+  border: 1px solid #2c2c2e;
+  border-radius: 12px;
+  padding: 11px 12px;
+  margin-bottom: 10px;
+}
+.ai-label {
+  font-size: 12px;
+  color: #8b8b90;
+  margin-bottom: 7px;
+}
+#sheetBullets {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+#sheetBullets li {
+  position: relative;
+  padding-left: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #e8e8ed;
+}
+#sheetBullets li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--red);
+}
+.sheet-summary {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 0 0 16px;
+}
+.sheet-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  align-items: center;
+}
+.btn-secondary {
+  flex: 1;
+  background: var(--pill);
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 650;
+}
+.btn-ghost {
+  color: var(--muted);
+  font-size: 13px;
+  text-decoration: none;
+  padding: 10px 8px;
+}
+.btn-ghost[hidden] { display: none !important; }
+
+.empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 20px 10px;
+  font-size: 13px;
+  list-style: none;
+}
+
+@media (min-width: 520px) {
+  .app {
+    border-left: 1px solid #141414;
+    border-right: 1px solid #141414;
+  }
+}
+
+</style>
+</head>
+<body>
+<div class="app" id="app">
+    <section class="page active" id="page-home" data-page="home">
+      <header class="home-header">
+        <div class="date-block">
+          <h1 class="date-big" id="dateBig">—</h1>
+          <p class="date-sub" id="dateSub">—</p>
+        </div>
+        <div class="header-actions">
+          <button type="button" class="icon-btn" id="btnSearch" aria-label="搜索" title="搜索">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          </button>
+          <button type="button" class="icon-btn" id="btnRefresh" aria-label="刷新" title="刷新">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="scroll" id="homeScroll">
+        <article class="card morning-card">
+          <div class="card-head">
+            <h2>早报</h2>
+            <button type="button" class="pill-play" id="btnBroadcast">
+              <span class="play-dot" aria-hidden="true"></span>一键播报
+            </button>
+          </div>
+          <ol class="num-list" id="morningList"></ol>
+        </article>
+
+        <div class="section-head">
+          <h2>我的订阅</h2>
+          <div class="section-links">
+            <button type="button" class="text-link" id="btnLayout">转为竖排</button>
+            <button type="button" class="text-link" id="btnManage">订阅管理</button>
+          </div>
+        </div>
+        <div id="mineCards" class="mine-cards horizontal"></div>
+
+        <div class="agg-label">订阅聚合</div>
+        <article class="card timeline-card">
+          <div class="card-head">
+            <h2>24 小时热榜</h2>
+            <button type="button" class="pill-more" id="btnTimelineAll">查看全部 <span>›</span></button>
+          </div>
+          <ul class="timeline" id="hotTimeline"></ul>
+        </article>
+
+        <article class="card timeline-card tech-card">
+          <div class="card-head">
+            <h2>科技大事</h2>
+            <button type="button" class="pill-more" id="btnTechCal">查看日历 <span>›</span></button>
+          </div>
+          <ul class="timeline tech-timeline" id="techTimeline"></ul>
+        </article>
+
+        <p class="foot-hint" id="updatedHint">加载中…</p>
+        <div class="bottom-spacer"></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-plaza" data-page="plaza" hidden>
+      <header class="plaza-header">
+        <h1>订阅广场</h1>
+      </header>
+      <div class="chips" id="catChips" role="tablist"></div>
+      <div class="scroll plaza-scroll">
+        <ul class="plaza-list" id="plazaList"></ul>
+        <div class="bottom-spacer"></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-me" data-page="me" hidden>
+      <header class="me-header">
+        <div class="avatar">知</div>
+        <div>
+          <h1>要知读者</h1>
+          <p class="me-sub" id="meSub">本地简报 · 无需登录</p>
+        </div>
+      </header>
+      <ul class="me-menu">
+        <li><button type="button" class="me-row" data-me="subs"><span>我的订阅</span><b id="meSubCount">0</b></button></li>
+        <li><button type="button" class="me-row" data-me="history"><span>阅读历史</span><span class="chev">›</span></button></li>
+        <li><button type="button" class="me-row" data-me="fav"><span>收藏</span><span class="chev">›</span></button></li>
+        <li><button type="button" class="me-row" data-me="settings"><span>设置</span><span class="chev">›</span></button></li>
+        <li><button type="button" class="me-row" data-me="about"><span>关于</span><span class="chev">›</span></button></li>
+      </ul>
+      <p class="foot-hint">摘要内嵌展示，点击标题不会跳转离开本页。</p>
+    </section>
+  </div>
+
+  <nav class="tabbar" id="tabbar">
+    <button type="button" class="tab active" data-nav="home">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 3.2 3.5 10.2V21h6.2v-6.2h4.6V21h6.2V10.2L12 3.2z"/></svg>
+      <span>首页</span>
+    </button>
+    <button type="button" class="tab" data-nav="plaza">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"/></svg>
+      <span>订阅广场</span>
+    </button>
+    <button type="button" class="tab" data-nav="me">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 12a4.2 4.2 0 1 0 0-8.4 4.2 4.2 0 0 0 0 8.4zm0 1.8c-3.6 0-8 1.8-8 5.4V21h16v-1.8c0-3.6-4.4-5.4-8-5.4z"/></svg>
+      <span>我</span>
+    </button>
+  </nav>
+
+  <div class="sheet" id="sheet" hidden>
+    <div class="sheet-backdrop" id="sheetBackdrop"></div>
+    <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+      <div class="sheet-grab"></div>
+      <div class="sheet-meta">
+        <span class="chip-src" id="sheetSource"></span>
+        <span class="chip-hot" id="sheetHot"></span>
+      </div>
+      <h2 id="sheetTitle"></h2>
+      <div class="sheet-tags" id="sheetTags"></div>
+      <div class="ai-box">
+        <div class="ai-label">要点摘要</div>
+        <ul id="sheetBullets"></ul>
+      </div>
+      <p class="sheet-summary" id="sheetSummary"></p>
+      <div class="sheet-actions">
+        <button type="button" class="btn-secondary" id="sheetDismiss">收起</button>
+        <a class="btn-ghost" id="sheetLink" href="#" target="_blank" rel="noopener noreferrer" hidden>查看原文</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet" id="sourceSheet" hidden>
+    <div class="sheet-backdrop" id="sourceBackdrop"></div>
+    <div class="sheet-panel tall" role="dialog" aria-modal="true">
+      <div class="sheet-grab"></div>
+      <div class="card-head sticky">
+        <h2 id="sourceSheetTitle">全部</h2>
+        <button type="button" class="pill-more" id="sourceSheetClose">关闭</button>
+      </div>
+      <ol class="num-list" id="sourceSheetList"></ol>
+    </div>
+  </div>
+<script>
+window.INLINE_DATA = {"updatedAt":"2026-10-07T15:56:57.039Z","updatedAtLabel":"2026/10/7 23:57:01","morning":[{"title":"孙颖莎爆冷止步32强","summary":"当前热度 647万。","bullets":["当前热度 647万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://s.weibo.com/weibo?q=%E5%AD%99%E9%A2%96%E8%8E%8E%E7%88%86%E5%86%B7%E6%AD%A2%E6%AD%A532%E5%BC%BA","hot":"647万","minsAgo":1,"tags":["综合","微博热搜榜"],"sourceId":"weibo_hot","sourceName":"微博热搜榜"},{"title":"孙颖莎请大家不用过度担心","summary":"当前热度 145万。","bullets":["当前热度 145万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://s.weibo.com/weibo?q=%E5%AD%99%E9%A2%96%E8%8E%8E%E8%AF%B7%E5%A4%A7%E5%AE%B6%E4%B8%8D%E7%94%A8%E8%BF%87%E5%BA%A6%E6%8B%85%E5%BF%83","hot":"145万","minsAgo":3,"tags":["综合","微博热搜榜"],"sourceId":"weibo_hot","sourceName":"微博热搜榜"},{"title":"假期结束后怎么调回好状态","summary":"当前热度 116万。","bullets":["当前热度 116万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://s.weibo.com/weibo?q=%E5%81%87%E6%9C%9F%E7%BB%93%E6%9D%9F%E5%90%8E%E6%80%8E%E4%B9%88%E8%B0%83%E5%9B%9E%E5%A5%BD%E7%8A%B6%E6%80%81","hot":"116万","minsAgo":7,"tags":["综合","微博热搜榜"],"sourceId":"weibo_hot","sourceName":"微博热搜榜"},{"title":"孙颖莎 1-3 不敌泰国选手，止步 WTT 中国大满贯女单 32 强，怎样评价本场比赛？","summary":"当前热度 1510 万。","bullets":["当前热度 1510 万","来自公开热榜聚合。"],"url":"https://www.zhihu.com/question/2091257221887649002","hot":"1510 万","minsAgo":1,"tags":["综合","知乎"],"sourceId":"zhihu_hot","sourceName":"知乎热榜"},{"title":"C 罗发表长文说明退出国家队训练营原因，称国家队主帅两次违背承诺，如何评价 C 罗的自诉？","summary":"当前热度 660 万。","bullets":["当前热度 660 万","来自公开热榜聚合。"],"url":"https://www.zhihu.com/question/2091062180405851460","hot":"660 万","minsAgo":3,"tags":["综合","知乎"],"sourceId":"zhihu_hot","sourceName":"知乎热榜"},{"title":"缅北电诈犯杀陌生人祭天，明珍珍死刑前微笑接受采访，为什么这些电诈犯这么嚣张？背后可能存在哪些保护伞？","summary":"当前热度 582 万。","bullets":["当前热度 582 万","来自公开热榜聚合。"],"url":"https://www.zhihu.com/question/2090789565132793677","hot":"582 万","minsAgo":7,"tags":["综合","知乎"],"sourceId":"zhihu_hot","sourceName":"知乎热榜"},{"title":"上3休1再上5休2","summary":"当前热度 2031.2万。","bullets":["当前热度 2031.2万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://so.toutiao.com/search?keyword=%23%E4%B8%8A3%E4%BC%911%E5%86%8D%E4%B8%8A5%E4%BC%912%23","hot":"2031.2万","minsAgo":1,"tags":["综合","今日头条"],"sourceId":"toutiao_hot","sourceName":"今日头条热榜"},{"title":"点赞！大国工程重器进度条刷新","summary":"当前热度 1837.9万。","bullets":["当前热度 1837.9万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://so.toutiao.com/search?keyword=%23%E7%82%B9%E8%B5%9E%EF%BC%81%E5%A4%A7%E5%9B%BD%E5%B7%A5%E7%A8%8B%E9%87%8D%E5%99%A8%E8%BF%9B%E5%BA%A6%E6%9D%A1%E5%88%B7%E6%96%B0%23","hot":"1837.9万","minsAgo":7,"tags":["综合","今日头条"],"sourceId":"toutiao_hot","sourceName":"今日头条热榜"},{"title":"曝华为 Mate 90 系列手机首销期销量超 27 万台，麒麟 9050 Pro 版“超大杯”占比约 40%","summary":"当前热度 483评。","bullets":["当前热度 483评","来自公开热榜聚合。"],"url":"https://m.ithome.com/html/1010244.htm","hot":"483评","minsAgo":1,"tags":["科技","IT之家"],"sourceId":"ithome_daily","sourceName":"IT之家日榜"},{"title":"苹果首款折叠 iPhone Duo 双页 PDF 模式曝光","summary":"当前热度 96评。","bullets":["当前热度 96评","来自公开热榜聚合。"],"url":"https://m.ithome.com/html/1010144.htm","hot":"96评","minsAgo":3,"tags":["科技","IT之家"],"sourceId":"ithome_daily","sourceName":"IT之家日榜"}],"timeline":[{"title":"孙颖莎爆冷止步32强","summary":"当前热度 647万。","bullets":["当前热度 647万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://s.weibo.com/weibo?q=%E5%AD%99%E9%A2%96%E8%8E%8E%E7%88%86%E5%86%B7%E6%AD%A2%E6%AD%A532%E5%BC%BA","hot":"647万","minsAgo":1,"tags":["综合","微博热搜榜"],"sourceId":"weibo_hot","sourceName":"微博热搜榜"},{"title":"孙颖莎 1-3 不敌泰国选手，止步 WTT 中国大满贯女单 32 强，怎样评价本场比赛？","summary":"当前热度 1510 万。","bullets":["当前热度 1510 万","来自公开热榜聚合。"],"url":"https://www.zhihu.com/question/2091257221887649002","hot":"1510 万","minsAgo":1,"tags":["综合","知乎"],"sourceId":"zhihu_hot","sourceName":"知乎热榜"},{"title":"缅北魏家犯罪集团骇人罪行曝光：魏怀仁外甥陈大卫与金主结拜兄弟，随便选陌生人“杀人祭天”草菅人命。#缅北电诈覆灭纪实 #媒体原创","summary":"当前热度 央视新闻。","bullets":["当前热度 央视新闻","来自公开热榜聚合。"],"url":"https://www.douyin.com/video/7693169629815967030","hot":"央视新闻","minsAgo":1,"tags":["娱乐","抖音"],"sourceId":"douyin_hot","sourceName":"抖音热榜"},{"title":"上3休1再上5休2","summary":"当前热度 2031.2万。","bullets":["当前热度 2031.2万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://so.toutiao.com/search?keyword=%23%E4%B8%8A3%E4%BC%911%E5%86%8D%E4%B8%8A5%E4%BC%912%23","hot":"2031.2万","minsAgo":1,"tags":["综合","今日头条"],"sourceId":"toutiao_hot","sourceName":"今日头条热榜"},{"title":"马上评｜让游客住学生宿舍，情理法如何平衡","summary":"马上评｜让游客住学生宿舍，情理法如何平衡","bullets":["马上评｜让游客住学生宿舍，情理法如何平衡"],"url":"https://www.thepaper.cn/newsDetail_forward_34207074","minsAgo":1,"tags":["综合","澎湃新闻"],"sourceId":"thepaper_hot","sourceName":"澎湃新闻热榜"},{"title":"曝华为 Mate 90 系列手机首销期销量超 27 万台，麒麟 9050 Pro 版“超大杯”占比约 40%","summary":"当前热度 483评。","bullets":["当前热度 483评","来自公开热榜聚合。"],"url":"https://m.ithome.com/html/1010244.htm","hot":"483评","minsAgo":1,"tags":["科技","IT之家"],"sourceId":"ithome_daily","sourceName":"IT之家日榜"},{"title":"余承东称华为自 2019 年以来为生存克服了许多困难，基本摆脱美国技术依赖","summary":"华为常务董事、产品投资评审委员会主任、终端 BG 董事长余承东在 9 月 29 日的国际媒体圆桌会议上透露，为了生存，华为自 2019 年以来克服了许多困难 —— 依靠自主技术和能力，与国内供应链合作制造先进芯片、设计自己的操作系统、自主开发基础工具和软件，逐步建立起国内供应链。","bullets":["华为常务董事、产品投资评审委员会主任、终端 BG 董事长余承东在 9 月 29 日的国际媒体圆桌会议上透露，为了生存，华为自 2019 年以来克服了许多困难 …","他表示，2023 年，华为才重新开始在国内制造智能手机所使用的芯片。"],"url":"https://www.ithome.com/1/010/304.htm","publishedAt":"2026-10-07T15:37:27.000Z","minsAgo":1,"tags":["科技","IT之家快讯"],"sourceId":"ithome_flash","sourceName":"IT之家快讯"},{"title":"《诡异的她》第一季全集·纯享","summary":"当前热度 657.0万。","bullets":["当前热度 657.0万","来自公开热榜聚合。"],"url":"https://www.bilibili.com/video/av117382345460653/","hot":"657.0万","minsAgo":1,"tags":["娱乐","Bilibili"],"sourceId":"bilibili_hot","sourceName":"Bilibili热门"},{"title":"苹果最终确认！向每位用户最高赔 637 元","summary":"当前热度 10.0万。","bullets":["当前热度 10.0万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://mp.weixin.qq.com/s?__biz=MzIxNjQzNTM5Mw==&mid=2247507218&idx=1&sn=b5ddaa09e4995ef5b014061de1bb5613#rd","hot":"10.0万","minsAgo":1,"tags":["科技","微信科技"],"sourceId":"weixin_tech","sourceName":"微信科技热门"},{"title":"数学大爆炸，OpenAI 一夜攻克722个数学难题，准黎曼猜想已被证明","summary":"数学大爆炸，OpenAI 一夜攻克722个数学难题，准黎曼猜想已被证明","bullets":["数学大爆炸，OpenAI 一夜攻克722个数学难题，准黎曼猜想已被证明"],"url":"https://www.36kr.com/p/4015128916676736","minsAgo":1,"tags":["科技","36氪"],"sourceId":"kr36","sourceName":"36氪热门"},{"title":"倒反天罡！德国人准备关掉自己的工厂，同时从中国进口了 17.5 万辆新车","summary":"当前热度 57.7万。","bullets":["当前热度 57.7万","来自公开热榜聚合。"],"url":"https://www.huxiu.com/article/4895050.html","hot":"57.7万","minsAgo":1,"tags":["科技","虎嗅"],"sourceId":"huxiu","sourceName":"虎嗅精选"},{"title":"TDS REVIEW | CMF Clip Pro 耳夹式无线耳机体验","summary":"当前热度 KingTsui。","bullets":["当前热度 KingTsui","来自公开热榜聚合。"],"url":"https://sspai.com/post/114922","hot":"KingTsui","minsAgo":1,"tags":["科技","少数派"],"sourceId":"sspai","sourceName":"少数派"},{"title":"美债重启抛售、收益率创2002年来新高，美股高位承压，早盘道指跌超1%，布油盘中涨2%","summary":"当前热度 9.4万。","bullets":["当前热度 9.4万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://wallstreetcn.com/articles/3783096","hot":"9.4万","minsAgo":1,"tags":["财经","华尔街见闻"],"sourceId":"wallstreet","sourceName":"华尔街见闻"},{"title":"比利时科学家独享今年价值800万元的物理诺奖，他做出了哪些重要贡献？如何通俗理解？","summary":"当前热度 乔见科学。","bullets":["当前热度 乔见科学","来自公开热榜聚合。"],"url":"https://new.qq.com/rain/a/20261006Q09YDV00","hot":"乔见科学","minsAgo":1,"tags":["综合","腾讯新闻"],"sourceId":"tencent_hot","sourceName":"腾讯新闻热门"},{"title":"求救信号","summary":"当前热度 7。","bullets":["当前热度 7","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://movie.douban.com/subject/36439868/","hot":"7","minsAgo":1,"tags":["娱乐","豆瓣电影"],"sourceId":"douban_movie","sourceName":"豆瓣电影周榜"},{"title":"幸福都是奋斗出来的","summary":"当前热度 790.5万。","bullets":["当前热度 790.5万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://www.baidu.com/s?wd=%E5%B9%B8%E7%A6%8F%E9%83%BD%E6%98%AF%E5%A5%8B%E6%96%97%E5%87%BA%E6%9D%A5%E7%9A%84","hot":"790.5万","minsAgo":1,"tags":["综合","百度热搜"],"sourceId":"baidu_hot","sourceName":"百度热搜"},{"title":"国庆假期首日文旅消费券热度增4倍，中国游客入住全球超2000个城市的酒店","summary":"国庆假期首日文旅消费券热度增4倍，中国游客入住全球超2000个城市的酒店","bullets":["国庆假期首日文旅消费券热度增4倍，中国游客入住全球超2000个城市的酒店"],"url":"https://www.yicai.com/news/103383702.html","minsAgo":1,"tags":["财经","第一财经"],"sourceId":"yicai","sourceName":"第一财经"},{"title":"Zuian美签被拒,369紧急出征","summary":"当前热度 255.3W实时讨论。","bullets":["当前热度 255.3W实时讨论","来自公开热榜聚合，详情可在页内展开查看。"],"url":"http://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28366389&topic_name=Zuian%E7%BE%8E%E7%AD%BE%E8%A2%AB%E6%8B%92%2C369%E7%B4%A7%E6%80%A5%E5%87%BA%E5%BE%81","hot":"255.3W实时讨论","minsAgo":1,"tags":["娱乐","贴吧热议"],"sourceId":"tieba_hot","sourceName":"贴吧热议"},{"title":"产品经理的日常 10月07日","summary":"产品经理的日常 10月07日","bullets":["产品经理的日常 10月07日"],"url":"https://m.okjike.com/originalPosts/6ac5fcfe141b85b292fbcee7","minsAgo":1,"tags":["科技","即刻"],"sourceId":"jike","sourceName":"即刻精选"},{"title":"孙颖莎请大家不用过度担心","summary":"当前热度 145万。","bullets":["当前热度 145万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://s.weibo.com/weibo?q=%E5%AD%99%E9%A2%96%E8%8E%8E%E8%AF%B7%E5%A4%A7%E5%AE%B6%E4%B8%8D%E7%94%A8%E8%BF%87%E5%BA%A6%E6%8B%85%E5%BF%83","hot":"145万","minsAgo":3,"tags":["综合","微博热搜榜"],"sourceId":"weibo_hot","sourceName":"微博热搜榜"},{"title":"C 罗发表长文说明退出国家队训练营原因，称国家队主帅两次违背承诺，如何评价 C 罗的自诉？","summary":"当前热度 660 万。","bullets":["当前热度 660 万","来自公开热榜聚合。"],"url":"https://www.zhihu.com/question/2091062180405851460","hot":"660 万","minsAgo":3,"tags":["综合","知乎"],"sourceId":"zhihu_hot","sourceName":"知乎热榜"},{"title":"#央视独家拍摄明家电诈园区“地下靶场” 墙上布满弹孔，曾有底层电诈人员在这里被“机枪扫射”，对外声称靶场实为“处决场”！#媒体原创","summary":"当前热度 央视新闻。","bullets":["当前热度 央视新闻","来自公开热榜聚合。"],"url":"https://www.douyin.com/video/7692807164448083215","hot":"央视新闻","minsAgo":3,"tags":["娱乐","抖音"],"sourceId":"douyin_hot","sourceName":"抖音热榜"},{"title":"孙颖莎爆冷止步32强","summary":"当前热度 2244.8万。","bullets":["当前热度 2244.8万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://so.toutiao.com/search?keyword=%23%E5%AD%99%E9%A2%96%E8%8E%8E%E7%88%86%E5%86%B7%E6%AD%A2%E6%AD%A532%E5%BC%BA%23","hot":"2244.8万","minsAgo":3,"tags":["综合","今日头条"],"sourceId":"toutiao_hot","sourceName":"今日头条热榜"},{"title":"苹果首款折叠 iPhone Duo 双页 PDF 模式曝光","summary":"当前热度 96评。","bullets":["当前热度 96评","来自公开热榜聚合。"],"url":"https://m.ithome.com/html/1010144.htm","hot":"96评","minsAgo":3,"tags":["科技","IT之家"],"sourceId":"ithome_daily","sourceName":"IT之家日榜"}],"techEvents":[{"time":"2026-10-07 17:45","place":"线上","title":"诺贝尔化学奖公布日关注"},{"time":"2026-10-08 19:00","place":"线上","title":"诺贝尔文学奖公布日关注"},{"time":"2026-10-09 17:00","place":"线上","title":"诺贝尔和平奖公布日关注"},{"time":"2026-10-10 10:00","place":"美国旧金山","title":"微软 AI PC / Copilot+ 相关发布窗口"},{"time":"2026-10-12 20:00","place":"线上","title":"英雄联盟全球总决赛主题曲发布窗口"},{"time":"2026-10-15 14:00","place":"中国","title":"国内科技新品与 AI 硬件密集发布周"}],"sources":[{"id":"weibo_hot","name":"微博热搜榜","cat":"综合","color":"#e6162d","icon":"微","defaultOn":true,"live":true,"status":"ok","updatedAt":"2026-10-07T15:56:57.039Z","todayCount":12,"items":[{"title":"孙颖莎爆冷止步32强","summary":"当前热度 647万。","bullets":["当前热度 647万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://s.weibo.com/weibo?q=%E5%AD%99%E9%A2%96%E8%8E%8E%E7%88%86%E5%86%B7%E6%AD%A2%E6%AD%A532%E5%BC%BA","hot":"647万","minsAgo":1,"tags":["综合","微博热搜榜"]},{"title":"孙颖莎请大家不用过度担心","summary":"当前热度 145万。","bullets":["当前热度 145万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://s.weibo.com/weibo?q=%E5%AD%99%E9%A2%96%E8%8E%8E%E8%AF%B7%E5%A4%A7%E5%AE%B6%E4%B8%8D%E7%94%A8%E8%BF%87%E5%BA%A6%E6%8B%85%E5%BF%83","hot":"145万","minsAgo":3,"tags":["综合","微博热搜榜"]},{"title":"假期结束后怎么调回好状态","summary":"当前热度 116万。","bullets":["当前热度 116万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://s.weibo.com/weibo?q=%E5%81%87%E6%9C%9F%E7%BB%93%E6%9D%9F%E5%90%8E%E6%80%8E%E4%B9%88%E8%B0%83%E5%9B%9E%E5%A5%BD%E7%8A%B6%E6%80%81","hot":"116万","minsAgo":7,"tags":["综合","微博热搜榜"]},{"title":"帕拉南回应淘汰孙颖莎","summary":"当前热度 101万。","bullets":["当前热度 101万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://s.weibo.com/weibo?q=%E5%B8%95%E6%8B%89%E5%8D%97%E5%9B%9E%E5%BA%94%E6%B7%98%E6%B1%B0%E5%AD%99%E9%A2%96%E8%8E%8E","hot":"101万","minsAgo":9,"tags":["综合","微博热搜榜"]},{"title":"王星失联前向女友求救发猫喂了没","summary":"当前热度 96万。","bullets":["当前热度 96万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://s.weibo.com/weibo?q=%E7%8E%8B%E6%98%9F%E5%A4%B1%E8%81%94%E5%89%8D%E5%90%91%E5%A5%B3%E5%8F%8B%E6%B1%82%E6%95%91%E5%8F%91%E7%8C%AB%E5%96%82%E4%BA%86%E6%B2%A1","hot":"96万","minsAgo":13,"tags":["综合","微博热搜榜"]},{"title":"檀健次卢昱晓 身高差","summary":"当前热度 81万。","bullets":["当前热度 81万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://s.weibo.com/weibo?q=%E6%AA%80%E5%81%A5%E6%AC%A1%E5%8D%A2%E6%98%B1%E6%99%93+%E8%BA%AB%E9%AB%98%E5%B7%AE","hot":"81万","minsAgo":16,"tags":["综合","微博热搜榜"]},{"title":"时装周","summary":"当前热度 73万。","bullets":["当前热度 73万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://s.weibo.com/weibo?q=%E6%97%B6%E8%A3%85%E5%91%A8","hot":"73万","minsAgo":18,"tags":["综合","微博热搜榜"]},{"title":"离加油站20米燃油耗尽车主发声","summary":"当前热度 65万。","bullets":["当前热度 65万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://s.weibo.com/weibo?q=%E7%A6%BB%E5%8A%A0%E6%B2%B9%E7%AB%9920%E7%B1%B3%E7%87%83%E6%B2%B9%E8%80%97%E5%B0%BD%E8%BD%A6%E4%B8%BB%E5%8F%91%E5%A3%B0","hot":"65万","minsAgo":22,"tags":["综合","微博热搜榜"]},{"title":"郑钦文成中网唯一非种子","summary":"当前热度 54万。","bullets":["当前热度 54万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://s.weibo.com/weibo?q=%E9%83%91%E9%92%A6%E6%96%87%E6%88%90%E4%B8%AD%E7%BD%91%E5%94%AF%E4%B8%80%E9%9D%9E%E7%A7%8D%E5%AD%90","hot":"54万","minsAgo":25,"tags":["综合","微博热搜榜"]},{"title":"郑钦文2比1赢了查拉耶娃","summary":"当前热度 51万。","bullets":["当前热度 51万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://s.weibo.com/weibo?q=%E9%83%91%E9%92%A6%E6%96%872%E6%AF%941%E8%B5%A2%E4%BA%86%E6%9F%A5%E6%8B%89%E8%80%B6%E5%A8%83","hot":"51万","minsAgo":28,"tags":["综合","微博热搜榜"]}]},{"id":"zhihu_hot","name":"知乎热榜","cat":"综合","color":"#0084ff","icon":"知","defaultOn":true,"live":true,"status":"ok","updatedAt":"2026-10-07T15:56:57.039Z","todayCount":12,"items":[{"title":"孙颖莎 1-3 不敌泰国选手，止步 WTT 中国大满贯女单 32 强，怎样评价本场比赛？","summary":"当前热度 1510 万。","bullets":["当前热度 1510 万","来自公开热榜聚合。"],"url":"https://www.zhihu.com/question/2091257221887649002","hot":"1510 万","minsAgo":1,"tags":["综合","知乎"]},{"title":"C 罗发表长文说明退出国家队训练营原因，称国家队主帅两次违背承诺，如何评价 C 罗的自诉？","summary":"当前热度 660 万。","bullets":["当前热度 660 万","来自公开热榜聚合。"],"url":"https://www.zhihu.com/question/2091062180405851460","hot":"660 万","minsAgo":3,"tags":["综合","知乎"]},{"title":"缅北电诈犯杀陌生人祭天，明珍珍死刑前微笑接受采访，为什么这些电诈犯这么嚣张？背后可能存在哪些保护伞？","summary":"当前热度 582 万。","bullets":["当前热度 582 万","来自公开热榜聚合。"],"url":"https://www.zhihu.com/question/2090789565132793677","hot":"582 万","minsAgo":7,"tags":["综合","知乎"]},{"title":"中国乒协发布声明，将推动建立赛场禁入名单制度，能有效治理粉丝乱象吗？","summary":"当前热度 487 万。","bullets":["当前热度 487 万","来自公开热榜聚合。"],"url":"https://www.zhihu.com/question/2091260950674240491","hot":"487 万","minsAgo":10,"tags":["综合","知乎"]},{"title":"余承东称华为将不得不涨价，存储元器件大涨使每部手机增超两百美元成本，会对消费者及手机市场有多大影响？","summary":"当前热度 413 万。","bullets":["当前热度 413 万","来自公开热榜聚合。"],"url":"https://www.zhihu.com/question/2091102378480985803","hot":"413 万","minsAgo":13,"tags":["综合","知乎"]},{"title":"《每日邮报》报道俄罗斯鼠疫出现第二例死亡患者，美督促在俄公民立即离境接受 14 天隔离，如何看待此事？","summary":"当前热度 369 万。","bullets":["当前热度 369 万","来自公开热榜聚合。"],"url":"https://www.zhihu.com/question/2091220263526458858","hot":"369 万","minsAgo":16,"tags":["综合","知乎"]},{"title":"演员王星案牵出跨境人口贩卖集团，其 4 天被卖 3 次，打击跨境犯罪有哪些难点？我们要提高哪些防骗意识？","summary":"当前热度 326 万。","bullets":["当前热度 326 万","来自公开热榜聚合。"],"url":"https://www.zhihu.com/question/2091181702186022094","hot":"326 万","minsAgo":18,"tags":["综合","知乎"]},{"title":"世界上最宜居的城市是哪一座？","summary":"当前热度 321 万。","bullets":["当前热度 321 万","来自公开热榜聚合。"],"url":"https://www.zhihu.com/question/1939000138921148772","hot":"321 万","minsAgo":21,"tags":["综合","知乎"]},{"title":"为何清北的牌子在哪儿都能吃得开，唯独学术圈吃不开？","summary":"当前热度 291 万。","bullets":["当前热度 291 万","来自公开热榜聚合。"],"url":"https://www.zhihu.com/question/9265507272","hot":"291 万","minsAgo":24,"tags":["综合","知乎"]},{"title":"2026 年诺贝尔化学奖颁给「化学同手性」，在一个没有手性的世界里如何可以产生手性物质？","summary":"当前热度 274 万。","bullets":["当前热度 274 万","来自公开热榜聚合。"],"url":"https://www.zhihu.com/question/46842636","hot":"274 万","minsAgo":28,"tags":["综合","知乎"]}]},{"id":"douyin_hot","name":"抖音热榜","cat":"娱乐","color":"#111111","icon":"抖","defaultOn":false,"live":true,"status":"ok","updatedAt":"2026-10-07T15:56:57.039Z","todayCount":12,"items":[{"title":"缅北魏家犯罪集团骇人罪行曝光：魏怀仁外甥陈大卫与金主结拜兄弟，随便选陌生人“杀人祭天”草菅人命。#缅北电诈覆灭纪实 #媒体原创","summary":"当前热度 央视新闻。","bullets":["当前热度 央视新闻","来自公开热榜聚合。"],"url":"https://www.douyin.com/video/7693169629815967030","hot":"央视新闻","minsAgo":1,"tags":["娱乐","抖音"]},{"title":"#央视独家拍摄明家电诈园区“地下靶场” 墙上布满弹孔，曾有底层电诈人员在这里被“机枪扫射”，对外声称靶场实为“处决场”！#媒体原创","summary":"当前热度 央视新闻。","bullets":["当前热度 央视新闻","来自公开热榜聚合。"],"url":"https://www.douyin.com/video/7692807164448083215","hot":"央视新闻","minsAgo":3,"tags":["娱乐","抖音"]},{"title":"我看清了妈妈小时候看不清的红房子","summary":"当前热度 沐言开心酱。","bullets":["当前热度 沐言开心酱","来自公开热榜聚合。"],"url":"https://www.douyin.com/video/7693389206785596607","hot":"沐言开心酱","minsAgo":7,"tags":["娱乐","抖音"]},{"title":"饭店的暑假工，后厨背锅！","summary":"当前热度 周小闹。","bullets":["当前热度 周小闹","来自公开热榜聚合。"],"url":"https://www.douyin.com/video/7693185616603829939","hot":"周小闹","minsAgo":9,"tags":["娱乐","抖音"]},{"title":"18岁生日当天，无证醉驾被查。小伙一听要拘留，脱口而出：“能不能让我爸去……”@安徽警方","summary":"当前热度 人民日报。","bullets":["当前热度 人民日报","来自公开热榜聚合。"],"url":"https://www.douyin.com/video/7693432322485538074","hot":"人民日报","minsAgo":12,"tags":["娱乐","抖音"]},{"title":"饭店的暑假工，后厨有脾气！","summary":"当前热度 周小闹。","bullets":["当前热度 周小闹","来自公开热榜聚合。"],"url":"https://www.douyin.com/video/7692811973934927590","hot":"周小闹","minsAgo":15,"tags":["娱乐","抖音"]},{"title":"啊啊啊啊啊啊啊 丢脸到家了#医学生 #医学生沙雕日常 #内容过于真实 #万万想不到","summary":"当前热度 小九五遇见小杨呀。","bullets":["当前热度 小九五遇见小杨呀","来自公开热榜聚合。"],"url":"https://www.douyin.com/video/7692655144760988026","hot":"小九五遇见小杨呀","minsAgo":18,"tags":["娱乐","抖音"]},{"title":"上映3天狂卷票房6800万，温子仁最新惊悚佳作，《潜伏6》！ #潜伏6 #温子仁 #我的长长长假   #国庆档观影repo  #抖音精选App征稿中","summary":"当前热度 逐梦电影。","bullets":["当前热度 逐梦电影","来自公开热榜聚合。"],"url":"https://www.douyin.com/video/7693286339424357632","hot":"逐梦电影","minsAgo":22,"tags":["娱乐","抖音"]},{"title":"答应我，下次在高铁上买东西前一定要问价格 #情侣搞笑日常#高铁盒饭","summary":"当前热度 秃头肥仔。","bullets":["当前热度 秃头肥仔","来自公开热榜聚合。"],"url":"https://www.douyin.com/video/7693023037851390117","hot":"秃头肥仔","minsAgo":24,"tags":["娱乐","抖音"]},{"title":"闪身步把我妈治服了😄 #亲子互动 #搞笑 #闪身步还能这样玩 #看到最后","summary":"当前热度 欣姐和高哥。","bullets":["当前热度 欣姐和高哥","来自公开热榜聚合。"],"url":"https://www.douyin.com/video/7692743362152332721","hot":"欣姐和高哥","minsAgo":28,"tags":["娱乐","抖音"]}]},{"id":"toutiao_hot","name":"今日头条热榜","cat":"综合","color":"#f04142","icon":"头","defaultOn":true,"live":true,"status":"ok","updatedAt":"2026-10-07T15:56:57.039Z","todayCount":12,"items":[{"title":"上3休1再上5休2","summary":"当前热度 2031.2万。","bullets":["当前热度 2031.2万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://so.toutiao.com/search?keyword=%23%E4%B8%8A3%E4%BC%911%E5%86%8D%E4%B8%8A5%E4%BC%912%23","hot":"2031.2万","minsAgo":1,"tags":["综合","今日头条"]},{"title":"孙颖莎爆冷止步32强","summary":"当前热度 2244.8万。","bullets":["当前热度 2244.8万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://so.toutiao.com/search?keyword=%23%E5%AD%99%E9%A2%96%E8%8E%8E%E7%88%86%E5%86%B7%E6%AD%A2%E6%AD%A532%E5%BC%BA%23","hot":"2244.8万","minsAgo":3,"tags":["综合","今日头条"]},{"title":"点赞！大国工程重器进度条刷新","summary":"当前热度 1837.9万。","bullets":["当前热度 1837.9万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://so.toutiao.com/search?keyword=%23%E7%82%B9%E8%B5%9E%EF%BC%81%E5%A4%A7%E5%9B%BD%E5%B7%A5%E7%A8%8B%E9%87%8D%E5%99%A8%E8%BF%9B%E5%BA%A6%E6%9D%A1%E5%88%B7%E6%96%B0%23","hot":"1837.9万","minsAgo":7,"tags":["综合","今日头条"]},{"title":"中国警方：缅北电诈死灰复燃也不怕","summary":"当前热度 1663.0万。","bullets":["当前热度 1663.0万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://so.toutiao.com/search?keyword=%23%E4%B8%AD%E5%9B%BD%E8%AD%A6%E6%96%B9%EF%BC%9A%E7%BC%85%E5%8C%97%E7%94%B5%E8%AF%88%E6%AD%BB%E7%81%B0%E5%A4%8D%E7%87%83%E4%B9%9F%E4%B8%8D%E6%80%95%23","hot":"1663.0万","minsAgo":10,"tags":["综合","今日头条"]},{"title":"对手赢孙颖莎后开心到不知怎么形容","summary":"当前热度 1504.8万。","bullets":["当前热度 1504.8万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://so.toutiao.com/search?keyword=%23%E5%AF%B9%E6%89%8B%E8%B5%A2%E5%AD%99%E9%A2%96%E8%8E%8E%E5%90%8E%E5%BC%80%E5%BF%83%E5%88%B0%E4%B8%8D%E7%9F%A5%E6%80%8E%E4%B9%88%E5%BD%A2%E5%AE%B9%23","hot":"1504.8万","minsAgo":13,"tags":["综合","今日头条"]},{"title":"郑钦文闯入中网女单八强","summary":"当前热度 1361.6万。","bullets":["当前热度 1361.6万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://so.toutiao.com/search?keyword=%23%E9%83%91%E9%92%A6%E6%96%87%E9%97%AF%E5%85%A5%E4%B8%AD%E7%BD%91%E5%A5%B3%E5%8D%95%E5%85%AB%E5%BC%BA%23","hot":"1361.6万","minsAgo":15,"tags":["综合","今日头条"]},{"title":"年轻人为何觉得景区越来越没意思了","summary":"当前热度 1232.0万。","bullets":["当前热度 1232.0万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://so.toutiao.com/search?keyword=%23%E5%B9%B4%E8%BD%BB%E4%BA%BA%E4%B8%BA%E4%BD%95%E8%A7%89%E5%BE%97%E6%99%AF%E5%8C%BA%E8%B6%8A%E6%9D%A5%E8%B6%8A%E6%B2%A1%E6%84%8F%E6%80%9D%E4%BA%86%23","hot":"1232.0万","minsAgo":19,"tags":["综合","今日头条"]},{"title":"土耳其和巴基斯坦向沙特派兵意味什么","summary":"当前热度 1114.8万。","bullets":["当前热度 1114.8万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://so.toutiao.com/search?keyword=%23%E5%9C%9F%E8%80%B3%E5%85%B6%E5%92%8C%E5%B7%B4%E5%9F%BA%E6%96%AF%E5%9D%A6%E5%90%91%E6%B2%99%E7%89%B9%E6%B4%BE%E5%85%B5%E6%84%8F%E5%91%B3%E4%BB%80%E4%B9%88%23","hot":"1114.8万","minsAgo":22,"tags":["综合","今日头条"]},{"title":"孙颖莎比赛前一晚一直在发烧","summary":"当前热度 1008.7万。","bullets":["当前热度 1008.7万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://so.toutiao.com/search?keyword=%23%E5%AD%99%E9%A2%96%E8%8E%8E%E6%AF%94%E8%B5%9B%E5%89%8D%E4%B8%80%E6%99%9A%E4%B8%80%E7%9B%B4%E5%9C%A8%E5%8F%91%E7%83%A7%23","hot":"1008.7万","minsAgo":24,"tags":["综合","今日头条"]},{"title":"演员王星4天被卖3次","summary":"当前热度 912.7万。","bullets":["当前热度 912.7万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://so.toutiao.com/search?keyword=%23%E6%BC%94%E5%91%98%E7%8E%8B%E6%98%9F4%E5%A4%A9%E8%A2%AB%E5%8D%963%E6%AC%A1%23","hot":"912.7万","minsAgo":28,"tags":["综合","今日头条"]}]},{"id":"thepaper_hot","name":"澎湃新闻热榜","cat":"综合","color":"#e60012","icon":"湃","defaultOn":false,"live":true,"status":"ok","updatedAt":"2026-10-07T15:56:57.039Z","todayCount":12,"items":[{"title":"马上评｜让游客住学生宿舍，情理法如何平衡","summary":"马上评｜让游客住学生宿舍，情理法如何平衡","bullets":["马上评｜让游客住学生宿舍，情理法如何平衡"],"url":"https://www.thepaper.cn/newsDetail_forward_34207074","minsAgo":1,"tags":["综合","澎湃新闻"]},{"title":"《欢迎来龙餐馆》将角逐第99届奥斯卡最佳国际影片","summary":"《欢迎来龙餐馆》将角逐第99届奥斯卡最佳国际影片","bullets":["《欢迎来龙餐馆》将角逐第99届奥斯卡最佳国际影片"],"url":"https://www.thepaper.cn/newsDetail_forward_34207584","minsAgo":4,"tags":["综合","澎湃新闻"]},{"title":"旁白｜叫停之后争论未止：活体投喂为何总有人叫好？","summary":"旁白｜叫停之后争论未止：活体投喂为何总有人叫好？","bullets":["旁白｜叫停之后争论未止：活体投喂为何总有人叫好？"],"url":"https://www.thepaper.cn/newsDetail_forward_34207565","minsAgo":6,"tags":["综合","澎湃新闻"]},{"title":"邵佳一向球迷道歉：必须在接下来的工作中更加努力","summary":"邵佳一向球迷道歉：必须在接下来的工作中更加努力","bullets":["邵佳一向球迷道歉：必须在接下来的工作中更加努力"],"url":"https://www.thepaper.cn/newsDetail_forward_34206260","minsAgo":9,"tags":["综合","澎湃新闻"]},{"title":"深陷信任危机的邵佳一：只发现问题还不够，解决问题是关键","summary":"深陷信任危机的邵佳一：只发现问题还不够，解决问题是关键","bullets":["深陷信任危机的邵佳一：只发现问题还不够，解决问题是关键"],"url":"https://www.thepaper.cn/newsDetail_forward_34206356","minsAgo":13,"tags":["综合","澎湃新闻"]},{"title":"马上评｜气得王皓报警，治理体育饭圈该动真格了","summary":"马上评｜气得王皓报警，治理体育饭圈该动真格了","bullets":["马上评｜气得王皓报警，治理体育饭圈该动真格了"],"url":"https://www.thepaper.cn/newsDetail_forward_34208488","minsAgo":16,"tags":["综合","澎湃新闻"]},{"title":"中国乒协回应极端球迷越界行为：已协助报案，将推动建立赛场禁入名单制度","summary":"中国乒协回应极端球迷越界行为：已协助报案，将推动建立赛场禁入名单制度","bullets":["中国乒协回应极端球迷越界行为：已协助报案，将推动建立赛场禁入名单制度"],"url":"https://www.thepaper.cn/newsDetail_forward_34209230","minsAgo":19,"tags":["综合","澎湃新闻"]},{"title":"奔赴“县”场｜在他们“出发”与“留下”的地方，看见回归的浙商","summary":"奔赴“县”场｜在他们“出发”与“留下”的地方，看见回归的浙商","bullets":["奔赴“县”场｜在他们“出发”与“留下”的地方，看见回归的浙商"],"url":"https://www.thepaper.cn/newsDetail_forward_34207949","minsAgo":21,"tags":["综合","澎湃新闻"]},{"title":"游客称山东潍坊一饭店现阴阳菜单，老板：当下食材不同，涉及的菜都免单了","summary":"游客称山东潍坊一饭店现阴阳菜单，老板：当下食材不同，涉及的菜都免单了","bullets":["游客称山东潍坊一饭店现阴阳菜单，老板：当下食材不同，涉及的菜都免单了"],"url":"https://www.thepaper.cn/newsDetail_forward_34208085","minsAgo":25,"tags":["综合","澎湃新闻"]},{"title":"孙颖莎不敌泰国选手帕拉南，止步WTT中国大满贯女单32强","summary":"孙颖莎不敌泰国选手帕拉南，止步WTT中国大满贯女单32强","bullets":["孙颖莎不敌泰国选手帕拉南，止步WTT中国大满贯女单32强"],"url":"https://www.thepaper.cn/newsDetail_forward_34209231","minsAgo":27,"tags":["综合","澎湃新闻"]}]},{"id":"xinwen_lianbo","name":"新闻联播速览","cat":"综合","color":"#c8102e","icon":"联","defaultOn":false,"live":false,"status":"unavailable","updatedAt":null,"todayCount":0,"items":[]},{"id":"ithome_daily","name":"IT之家日榜","cat":"科技","color":"#d35400","icon":"IT","defaultOn":true,"live":true,"status":"ok","updatedAt":"2026-10-07T15:56:57.039Z","todayCount":12,"items":[{"title":"曝华为 Mate 90 系列手机首销期销量超 27 万台，麒麟 9050 Pro 版“超大杯”占比约 40%","summary":"当前热度 483评。","bullets":["当前热度 483评","来自公开热榜聚合。"],"url":"https://m.ithome.com/html/1010244.htm","hot":"483评","minsAgo":1,"tags":["科技","IT之家"]},{"title":"苹果首款折叠 iPhone Duo 双页 PDF 模式曝光","summary":"当前热度 96评。","bullets":["当前热度 96评","来自公开热榜聚合。"],"url":"https://m.ithome.com/html/1010144.htm","hot":"96评","minsAgo":3,"tags":["科技","IT之家"]},{"title":"库克高位减持苹果股票，套现超 6000 万美元","summary":"当前热度 113评。","bullets":["当前热度 113评","来自公开热榜聚合。"],"url":"https://m.ithome.com/html/1010162.htm","hot":"113评","minsAgo":6,"tags":["科技","IT之家"]},{"title":"华为徐直军：昇腾在中国市场份额已超英伟达，950 超节点国内都不够用、没有计划全面出海","summary":"当前热度 239评。","bullets":["当前热度 239评","来自公开热榜聚合。"],"url":"https://m.ithome.com/html/1010195.htm","hot":"239评","minsAgo":10,"tags":["科技","IT之家"]},{"title":"小米官宣澎湃 OS 4 全面兼容苹果生态：重要信息双向同步、妙享桌面支持 Apple 三件套等","summary":"当前热度 183评。","bullets":["当前热度 183评","来自公开热榜聚合。"],"url":"https://m.ithome.com/html/1010238.htm","hot":"183评","minsAgo":12,"tags":["科技","IT之家"]},{"title":"电影《欢迎来龙餐馆》宣布代表中国内地角逐第 99 届奥斯卡最佳国际影片","summary":"当前热度 145评。","bullets":["当前热度 145评","来自公开热榜聚合。"],"url":"https://m.ithome.com/html/1010171.htm","hot":"145评","minsAgo":15,"tags":["科技","IT之家"]},{"title":"华为徐直军回应“美国同行呼吁放缓 AI 开发”：中国模型更弱反而需要加快，不然怎么体会到风险","summary":"当前热度 112评。","bullets":["当前热度 112评","来自公开热榜聚合。"],"url":"https://m.ithome.com/html/1010198.htm","hot":"112评","minsAgo":18,"tags":["科技","IT之家"]},{"title":"华为余承东：极紫外光刻（EUV）设备是制造先进芯片的关键，国内目前正在研发","summary":"当前热度 184评。","bullets":["当前热度 184评","来自公开热榜聚合。"],"url":"https://m.ithome.com/html/1010286.htm","hot":"184评","minsAgo":22,"tags":["科技","IT之家"]},{"title":"华为自研 Wi-Fi 7+ 芯片级协同技术支持设备上新，新增 Mate 90 系列手机","summary":"当前热度 123评。","bullets":["当前热度 123评","来自公开热榜聚合。"],"url":"https://m.ithome.com/html/1010243.htm","hot":"123评","minsAgo":24,"tags":["科技","IT之家"]},{"title":"打通 AirDrop：小米 18 Pro Max 手机上线“与 Apple 设备互传”功能","summary":"当前热度 92评。","bullets":["当前热度 92评","来自公开热榜聚合。"],"url":"https://m.ithome.com/html/1010209.htm","hot":"92评","minsAgo":28,"tags":["科技","IT之家"]}]},{"id":"ithome_flash","name":"IT之家快讯","cat":"科技","color":"#e67e22","icon":"讯","defaultOn":false,"live":true,"status":"ok","updatedAt":"2026-10-07T15:56:57.039Z","todayCount":10,"items":[{"title":"余承东称华为自 2019 年以来为生存克服了许多困难，基本摆脱美国技术依赖","summary":"华为常务董事、产品投资评审委员会主任、终端 BG 董事长余承东在 9 月 29 日的国际媒体圆桌会议上透露，为了生存，华为自 2019 年以来克服了许多困难 —— 依靠自主技术和能力，与国内供应链合作制造先进芯片、设计自己的操作系统、自主开发基础工具和软件，逐步建立起国内供应链。","bullets":["华为常务董事、产品投资评审委员会主任、终端 BG 董事长余承东在 9 月 29 日的国际媒体圆桌会议上透露，为了生存，华为自 2019 年以来克服了许多困难 …","他表示，2023 年，华为才重新开始在国内制造智能手机所使用的芯片。"],"url":"https://www.ithome.com/1/010/304.htm","publishedAt":"2026-10-07T15:37:27.000Z","minsAgo":1,"tags":["科技","IT之家快讯"]},{"title":"传三星电子 12Hi HBM4E 内存已通过英伟达等主要客户质量验证测试","summary":"《韩国经济日报》当地时间今日报道称，三星电子存储器业务的 12 层堆叠 HBM4E 内存已于 9 月末通过 NVIDIA（英伟达）和主要超大规模数据中心企业的质量验证测试， 各客户的供货量、合同规模、出货时间尚未敲定 。","bullets":["《韩国经济日报》当地时间今日报道称，三星电子存储器业务的 12 层堆叠 HBM4E 内存已于 9 月末通过 NVIDIA（英伟达）和主要超大规模数据中心企业的…","三星电子此前在今年 5 月实现了 12Hi HBM4E 产品的出样。"],"url":"https://www.ithome.com/1/010/303.htm","publishedAt":"2026-10-07T15:35:14.000Z","minsAgo":4,"tags":["科技","IT之家快讯"]},{"title":"索尼两款新设备获 Wi-Fi 联盟认证，预计为新款 PS Portal 串流掌机","summary":"索尼两款新设备近日在 Wi-Fi 联盟完成认证，型号分别为 CFI-Y2000 和 CFI-Y2105，这些机器很可能是 PlayStation Portal 串流掌机（IT之家注：CFI-Y1001）的新款机型。","bullets":["索尼两款新设备近日在 Wi-Fi 联盟完成认证，型号分别为 CFI-Y2000 和 CFI-Y2105，这些机器很可能是 PlayStation Portal…","根据认证信息所述，这两款设备均支持 802.11a/b/g/n/ac，包含 2.4GHz 和 5GHz 频段， 均运行 Android 15 系统 。"],"url":"https://www.ithome.com/1/010/302.htm","publishedAt":"2026-10-07T15:27:28.000Z","minsAgo":6,"tags":["科技","IT之家快讯"]},{"title":"谷歌认证翻新计划扩展至日本：Pixel 8 / 9 系列智能手机最多折扣 45%","summary":"Google（谷歌）当地时间今日宣布，其认证翻新设备计划正式扩展至日本市场。当地消费者通过官方渠道购买 Pixel 8 / 9 系列等前代 Google Pixel 设备的“官翻机”时 最多可享受 45% 的折扣 。所有谷歌认证翻新设备都 经过全面且严格的质量测试 。","bullets":["Google（谷歌）当地时间今日宣布，其认证翻新设备计划正式扩展至日本市场。","当地消费者通过官方渠道购买 Pixel 8 / 9 系列等前代 Google Pixel 设备的“官翻机”时 最多可享受 45% 的折扣 。","所有谷歌认证翻新设备都 经过全面且严格的质量测试 。"],"url":"https://www.ithome.com/1/010/301.htm","publishedAt":"2026-10-07T15:25:37.000Z","minsAgo":9,"tags":["科技","IT之家快讯"]},{"title":"CoreWeave 落子印度，签署 240MW 数据中心容量租约","summary":"人工智能云服务企业 CoreWeave 当地时间今日宣布进军印度市场：该企业与阿达尼旗下的 AdaniConneX 达成合作， 将在印度租赁 240MW 数据中心容量 。这些容量位于孟买新城的 Taloja 园区，由 3 座 80MW 建筑组成。","bullets":["人工智能云服务企业 CoreWeave 当地时间今日宣布进军印度市场：该企业与阿达尼旗下的 AdaniConneX 达成合作， 将在印度租赁 240MW 数据…","这些容量位于孟买新城的 Taloja 园区，由 3 座 80MW 建筑组成。","CoreWeave 计划在这里部署 NVIDIA Vera Rubin 平台 。"],"url":"https://www.ithome.com/1/010/300.htm","publishedAt":"2026-10-07T15:19:43.000Z","minsAgo":13,"tags":["科技","IT之家快讯"]},{"title":"“iPod 之父”法德尔分析 Rabbit R1 等初代 AI 设备为何失败：没能真正满足任何需求","summary":"被誉为“iPod 之父”的托尼 · 法德尔最近在首届麻省理工未来节发表演讲。","bullets":["被誉为“iPod 之父”的托尼 · 法德尔最近在首届麻省理工未来节发表演讲。","他上台时展示了三款曾经备受追捧的第一代 AI 设备：Rabbit R1、Humane AI Pin 和 Limitless Pendant，并说道：“这些产品…","” 托尼 · 法德尔表示：“这些设备失败的原因很简单， 它们没能真正满足任何实际需求 。"],"url":"https://www.ithome.com/1/010/299.htm","publishedAt":"2026-10-07T15:19:07.000Z","minsAgo":15,"tags":["科技","IT之家快讯"]},{"title":"AMD 将在 2026 年内将 FSR 4 支持扩展至 APU、游戏本、掌机等全线设备","summary":"据韩媒 THE ELEC 报道，AMD 高级副总裁及计算与图形事业部总经理 Jack Huynh 当地时间今日在其韩国之行中表示， AMD 将在 2026 年内将 FSR 4 支持扩展至 APU、游戏本、掌机等全线设备 。","bullets":["据韩媒 THE ELEC 报道，AMD 高级副总裁及计算与图形事业部总经理 Jack Huynh 当地时间今日在其韩国之行中表示， AMD 将在 2026 年…","Jack Huynh 表示， AMD 将从扩大对现有 APU 支持和推出新 APU 这两方面共同着手 。"],"url":"https://www.ithome.com/1/010/297.htm","publishedAt":"2026-10-07T15:09:20.000Z","minsAgo":18,"tags":["科技","IT之家快讯"]},{"title":"华为 5A 通信技术最新设备清单公开，新增 Mate 90 系列、Mate XT 2 等机型","summary":"华为官网“悄悄”更新了 5A 相关问题的支持文档，公布了支持 5A 通信技术的最新机型清单，涵盖手机及平板产品线， 新增 Mate 90 系列、Mate XT 2 等机型 。","bullets":["华为官网“悄悄”更新了 5A 相关问题的支持文档，公布了支持 5A 通信技术的最新机型清单，涵盖手机及平板产品线， 新增 Mate 90 系列、Mate XT…","华为明确，5A 只代表华为终端先进的通信技术，而非网络制式，既不等同于 5G-A（5GA），也不等同于 5.5G。","5A 技术没有单独的开关，无需用户额外付费或手动设置，支持机型将在系统状态栏默认显示 5A 标识。"],"url":"https://www.ithome.com/1/010/296.htm","publishedAt":"2026-10-07T15:06:23.000Z","minsAgo":21,"tags":["科技","IT之家快讯"]},{"title":"适配大屏：Meta 推出 iPad 版 Muse AI 智能体","summary":"Meta 现已将 Muse AI 智能体适配苹果 iPad 平台， 同时新增 Canva、Dropbox、Figma、QuickBooks、GitHub、Klaviyo、Zoom 等连接器 。","bullets":["Meta 现已将 Muse AI 智能体适配苹果 iPad 平台， 同时新增 Canva、Dropbox、Figma、QuickBooks、GitHub、Kl…","IT之家了解到，Muse 是 Meta 推出的 AI 智能体应用程序，主要竞争对手有 Grok Bot、ChatGPT Dots 和 OpenClaw 等。"],"url":"https://www.ithome.com/1/010/295.htm","publishedAt":"2026-10-07T14:58:55.000Z","minsAgo":25,"tags":["科技","IT之家快讯"]},{"title":"赛豆 AIVA ME7 量产路测车无伪谍照曝光，定位介于轿车与 SUV 之间的跨界车","summary":"博主 @SugarDesign 今日曝光了赛豆 AIVA ME7 量产版路测无伪谍照。从图中可以看到，AIVA ME7 的车身造型延续 AIVA Origin Concept 概念车的设计， 车顶处配有激光雷达 ，预计将支持高阶智能辅助驾驶功能。","bullets":["博主 @SugarDesign 今日曝光了赛豆 AIVA ME7 量产版路测无伪谍照。","从图中可以看到，AIVA ME7 的车身造型延续 AIVA Origin Concept 概念车的设计， 车顶处配有激光雷达 ，预计将支持高阶智能辅助驾驶功能。","参考IT之家此前报道，今年 9 月底，赛豆科技（重庆市沙坪坝区与赛力斯共同投资）旗下 AIVA 品牌首款量产车型 AIVA ME7 在法国巴黎尚普拉特勒城堡完…"],"url":"https://www.ithome.com/1/010/294.htm","publishedAt":"2026-10-07T14:51:53.000Z","minsAgo":27,"tags":["科技","IT之家快讯"]}]},{"id":"bilibili_hot","name":"Bilibili热门","cat":"娱乐","color":"#fb7299","icon":"B","defaultOn":false,"live":true,"status":"ok","updatedAt":"2026-10-07T15:56:57.039Z","todayCount":12,"items":[{"title":"《诡异的她》第一季全集·纯享","summary":"当前热度 657.0万。","bullets":["当前热度 657.0万","来自公开热榜聚合。"],"url":"https://www.bilibili.com/video/av117382345460653/","hot":"657.0万","minsAgo":1,"tags":["娱乐","Bilibili"]},{"title":"啊啊7月新番你到底给我下了什么药啊！！【泛式】","summary":"当前热度 162.1万。","bullets":["当前热度 162.1万","来自公开热榜聚合。"],"url":"https://www.bilibili.com/video/av117393753899831/","hot":"162.1万","minsAgo":4,"tags":["娱乐","Bilibili"]},{"title":"看这个视频我不烧心！","summary":"当前热度 628.8万。","bullets":["当前热度 628.8万","来自公开热榜聚合。"],"url":"https://www.bilibili.com/video/av117382194401331/","hot":"628.8万","minsAgo":6,"tags":["娱乐","Bilibili"]},{"title":"惊惊惊惊惊惊惊惊了","summary":"当前热度 308.7万。","bullets":["当前热度 308.7万","来自公开热榜聚合。"],"url":"https://www.bilibili.com/video/av117359712997385/","hot":"308.7万","minsAgo":10,"tags":["娱乐","Bilibili"]},{"title":"【春物语】我的婚后生活果然有问题 第1话：于是，结婚半年的两人还没叫过对方的名字。","summary":"当前热度 301.5万。","bullets":["当前热度 301.5万","来自公开热榜聚合。"],"url":"https://www.bilibili.com/video/av117381540156775/","hot":"301.5万","minsAgo":13,"tags":["娱乐","Bilibili"]},{"title":"被 解 救 的 杰 戈","summary":"当前热度 229.0万。","bullets":["当前热度 229.0万","来自公开热榜聚合。"],"url":"https://www.bilibili.com/video/av117387328295977/","hot":"229.0万","minsAgo":16,"tags":["娱乐","Bilibili"]},{"title":"近期画的","summary":"当前热度 78.5万。","bullets":["当前热度 78.5万","来自公开热榜聚合。"],"url":"https://www.bilibili.com/video/av117376272110771/","hot":"78.5万","minsAgo":18,"tags":["娱乐","Bilibili"]},{"title":"《我上哪给你整假的》","summary":"当前热度 298.7万。","bullets":["当前热度 298.7万","来自公开热榜聚合。"],"url":"https://www.bilibili.com/video/av117381825301333/","hot":"298.7万","minsAgo":22,"tags":["娱乐","Bilibili"]},{"title":"结尾喊妈妈","summary":"当前热度 278.3万。","bullets":["当前热度 278.3万","来自公开热榜聚合。"],"url":"https://www.bilibili.com/video/av117381456333731/","hot":"278.3万","minsAgo":25,"tags":["娱乐","Bilibili"]},{"title":"【哥布林故事总集篇】愿你也能像哥布林一样，开启逆袭翻盘的旅途","summary":"当前热度 211.6万。","bullets":["当前热度 211.6万","来自公开热榜聚合。"],"url":"https://www.bilibili.com/video/av117382311907328/","hot":"211.6万","minsAgo":27,"tags":["娱乐","Bilibili"]}]},{"id":"weixin_tech","name":"微信科技热门","cat":"科技","color":"#07c160","icon":"微","defaultOn":false,"live":true,"status":"ok","updatedAt":"2026-10-07T15:56:57.039Z","todayCount":12,"items":[{"title":"苹果最终确认！向每位用户最高赔 637 元","summary":"当前热度 10.0万。","bullets":["当前热度 10.0万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://mp.weixin.qq.com/s?__biz=MzIxNjQzNTM5Mw==&mid=2247507218&idx=1&sn=b5ddaa09e4995ef5b014061de1bb5613#rd","hot":"10.0万","minsAgo":1,"tags":["科技","微信科技"]},{"title":"恭喜当年办了ETC的车主","summary":"当前热度 10.0万。","bullets":["当前热度 10.0万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://mp.weixin.qq.com/s?__biz=MzYyMTgyMTQ0MA==&mid=2247485786&idx=1&sn=ba79dc5d680ac9de53538141a2773856#rd","hot":"10.0万","minsAgo":3,"tags":["科技","微信科技"]},{"title":"名古屋亚运会 | 韩国男篮67-57战胜日本拿下金牌，中国队收获第四，历史第二差战绩","summary":"当前热度 10.0万。","bullets":["当前热度 10.0万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://mp.weixin.qq.com/s?__biz=Mzk4ODg5MzE2Ng==&mid=2247484728&idx=1&sn=b48a0e9afac355217c836dd8e87f1cbc#rd","hot":"10.0万","minsAgo":7,"tags":["科技","微信科技"]},{"title":"83年，43岁，钱难挣，新的攀比风已经出现了","summary":"当前热度 10.0万。","bullets":["当前热度 10.0万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://mp.weixin.qq.com/s?__biz=MjM5MDA5ODg5NQ==&mid=2449662392&idx=1&sn=2ddae15ab4851c126142e9fc95397618#rd","hot":"10.0万","minsAgo":9,"tags":["科技","微信科技"]},{"title":"今日有梗：我今年三十五了，谈了五个男朋友，不怕你们笑话，基本都同居过。我先说一句实在话：三十五了，没结过婚，谈过五段恋爱，每一段","summary":"当前热度 10.0万。","bullets":["当前热度 10.0万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://mp.weixin.qq.com/s?__biz=MzcwODM0NTk1OQ==&mid=2247485751&idx=1&sn=7c1c80e6cbb94dbdc5a6797718763a4d#rd","hot":"10.0万","minsAgo":12,"tags":["科技","微信科技"]},{"title":"舒服到不想脱下来的一套懒人穿搭","summary":"当前热度 10.0万。","bullets":["当前热度 10.0万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://mp.weixin.qq.com/s?__biz=MzY4MTIwMjg2MQ==&mid=2247486541&idx=1&sn=0d73281a1e3fbc1722445ce6a52dbb96#rd","hot":"10.0万","minsAgo":16,"tags":["科技","微信科技"]},{"title":"41岁薇娅官宣二胎得子，一家四口同框太温馨","summary":"当前热度 10.0万。","bullets":["当前热度 10.0万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://mp.weixin.qq.com/s?__biz=MzkzMjY4OTk4NQ==&mid=2247489460&idx=1&sn=430287701f87e9ff30885fc47ac39d3b#rd","hot":"10.0万","minsAgo":19,"tags":["科技","微信科技"]},{"title":"又到了一年一度家长展示手艺的时候了🏮","summary":"当前热度 10.0万。","bullets":["当前热度 10.0万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://mp.weixin.qq.com/s?__biz=MzY5NzI4MDQwOQ==&mid=2247486040&idx=1&sn=30d1e2f3c69ee81d14891215d067d513#rd","hot":"10.0万","minsAgo":22,"tags":["科技","微信科技"]},{"title":"这么有创意，难怪生意会好","summary":"当前热度 10.0万。","bullets":["当前热度 10.0万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://mp.weixin.qq.com/s?__biz=MzcwODExMzg5MQ==&mid=2247485715&idx=1&sn=dcac48db1baa54318ef8c58526bdc543#rd","hot":"10.0万","minsAgo":25,"tags":["科技","微信科技"]},{"title":"江北的零号路真不错","summary":"当前热度 10.0万。","bullets":["当前热度 10.0万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://mp.weixin.qq.com/s?__biz=MzcwNTM3MTg4NQ==&mid=2247484223&idx=1&sn=bd65cc8daecab0839da8ce6523f3ce4c#rd","hot":"10.0万","minsAgo":27,"tags":["科技","微信科技"]}]},{"id":"kr36","name":"36氪热门","cat":"科技","color":"#1a73e8","icon":"36","defaultOn":false,"live":true,"status":"ok","updatedAt":"2026-10-07T15:56:57.039Z","todayCount":8,"items":[{"title":"数学大爆炸，OpenAI 一夜攻克722个数学难题，准黎曼猜想已被证明","summary":"数学大爆炸，OpenAI 一夜攻克722个数学难题，准黎曼猜想已被证明","bullets":["数学大爆炸，OpenAI 一夜攻克722个数学难题，准黎曼猜想已被证明"],"url":"https://www.36kr.com/p/4015128916676736","minsAgo":1,"tags":["科技","36氪"]},{"title":"河南老板，让素人当主角，一天3980元","summary":"河南老板，让素人当主角，一天3980元","bullets":["河南老板，让素人当主角，一天3980元"],"url":"https://www.36kr.com/p/4015085008768897","minsAgo":3,"tags":["科技","36氪"]},{"title":"AI几年内或超越所有人类，Claude核心研究员预测","summary":"AI几年内或超越所有人类，Claude核心研究员预测","bullets":["AI几年内或超越所有人类，Claude核心研究员预测"],"url":"https://www.36kr.com/p/4014585839210629","minsAgo":7,"tags":["科技","36氪"]},{"title":"一杯等90分钟，凌晨1点还没散！广东跑出一批“老式爆店”","summary":"一杯等90分钟，凌晨1点还没散！广东跑出一批“老式爆店”","bullets":["一杯等90分钟，凌晨1点还没散！广东跑出一批“老式爆店”"],"url":"https://www.36kr.com/p/4015138143801224","minsAgo":9,"tags":["科技","36氪"]},{"title":"别人并没有过得比你幸福","summary":"别人并没有过得比你幸福","bullets":["别人并没有过得比你幸福"],"url":"https://www.36kr.com/p/3973004790919430","minsAgo":13,"tags":["科技","36氪"]},{"title":"突发，Claude拿下概率论「圣杯」，AI跨过菲尔兹奖终点线","summary":"突发，Claude拿下概率论「圣杯」，AI跨过菲尔兹奖终点线","bullets":["突发，Claude拿下概率论「圣杯」，AI跨过菲尔兹奖终点线"],"url":"https://www.36kr.com/p/4015346980278153","minsAgo":16,"tags":["科技","36氪"]},{"title":"为什么 ChatGPT 总爱在标题里塞色情赌博小广告？","summary":"为什么 ChatGPT 总爱在标题里塞色情赌博小广告？","bullets":["为什么 ChatGPT 总爱在标题里塞色情赌博小广告？"],"url":"https://www.36kr.com/p/4015290777981060","minsAgo":19,"tags":["科技","36氪"]},{"title":"可灵上市，快手如何自洽","summary":"可灵上市，快手如何自洽","bullets":["可灵上市，快手如何自洽"],"url":"https://www.36kr.com/p/4015326443329157","minsAgo":22,"tags":["科技","36氪"]}]},{"id":"huxiu","name":"虎嗅精选","cat":"科技","color":"#ff6600","icon":"虎","defaultOn":false,"live":true,"status":"ok","updatedAt":"2026-10-07T15:56:57.039Z","todayCount":12,"items":[{"title":"倒反天罡！德国人准备关掉自己的工厂，同时从中国进口了 17.5 万辆新车","summary":"当前热度 57.7万。","bullets":["当前热度 57.7万","来自公开热榜聚合。"],"url":"https://www.huxiu.com/article/4895050.html","hot":"57.7万","minsAgo":1,"tags":["科技","虎嗅"]},{"title":"国庆出游用AI，第一批人已经被坑惨了","summary":"当前热度 44.9万。","bullets":["当前热度 44.9万","来自公开热榜聚合。"],"url":"https://www.huxiu.com/article/4895221.html","hot":"44.9万","minsAgo":3,"tags":["科技","虎嗅"]},{"title":"人山人海，为何没换来盆满钵满？","summary":"当前热度 35.4万。","bullets":["当前热度 35.4万","来自公开热榜聚合。"],"url":"https://www.huxiu.com/article/4895335.html","hot":"35.4万","minsAgo":6,"tags":["科技","虎嗅"]},{"title":"谁在制造让中产上瘾的纸片？","summary":"当前热度 36.1万。","bullets":["当前热度 36.1万","来自公开热榜聚合。"],"url":"https://www.huxiu.com/article/4895201.html","hot":"36.1万","minsAgo":10,"tags":["科技","虎嗅"]},{"title":"这次，字节枪口瞄准了谁？","summary":"当前热度 28.1万。","bullets":["当前热度 28.1万","来自公开热榜聚合。"],"url":"https://www.huxiu.com/article/4893106.html","hot":"28.1万","minsAgo":12,"tags":["科技","虎嗅"]},{"title":"百万网约车司机，在国庆旅游旺季里等待奇迹","summary":"当前热度 33.5万。","bullets":["当前热度 33.5万","来自公开热榜聚合。"],"url":"https://www.huxiu.com/article/4895419.html","hot":"33.5万","minsAgo":16,"tags":["科技","虎嗅"]},{"title":"一篇讲透，我们对越南的误解与易踩的坑","summary":"当前热度 26.9万。","bullets":["当前热度 26.9万","来自公开热榜聚合。"],"url":"https://www.huxiu.com/article/4895285.html","hot":"26.9万","minsAgo":19,"tags":["科技","虎嗅"]},{"title":"西安正在变得越来越湿","summary":"当前热度 24.3万。","bullets":["当前热度 24.3万","来自公开热榜聚合。"],"url":"https://www.huxiu.com/article/4895176.html","hot":"24.3万","minsAgo":22,"tags":["科技","虎嗅"]},{"title":"放假以后，我突然觉得世界有点假","summary":"当前热度 24.7万。","bullets":["当前热度 24.7万","来自公开热榜聚合。"],"url":"https://www.huxiu.com/article/4895241.html","hot":"24.7万","minsAgo":24,"tags":["科技","虎嗅"]},{"title":"一台华为Mate万元旗舰，套上了59元积木壳","summary":"当前热度 22.1万。","bullets":["当前热度 22.1万","来自公开热榜聚合。"],"url":"https://www.huxiu.com/article/4895072.html","hot":"22.1万","minsAgo":28,"tags":["科技","虎嗅"]}]},{"id":"sspai","name":"少数派","cat":"科技","color":"#c45c26","icon":"派","defaultOn":false,"live":true,"status":"ok","updatedAt":"2026-10-07T15:56:57.039Z","todayCount":12,"items":[{"title":"TDS REVIEW | CMF Clip Pro 耳夹式无线耳机体验","summary":"当前热度 KingTsui。","bullets":["当前热度 KingTsui","来自公开热榜聚合。"],"url":"https://sspai.com/post/114922","hot":"KingTsui","minsAgo":1,"tags":["科技","少数派"]},{"title":"本周看什么 | 最近值得一看的 8 部作品","summary":"当前热度 少数派编辑部。","bullets":["当前热度 少数派编辑部","来自公开热榜聚合。"],"url":"https://sspai.com/post/115211","hot":"少数派编辑部","minsAgo":4,"tags":["科技","少数派"]},{"title":"经典任务管理软件的现代重构：新版 2Do 详解","summary":"当前热度 广陵止息。","bullets":["当前热度 广陵止息","来自公开热榜聚合。"],"url":"https://sspai.com/post/115166","hot":"广陵止息","minsAgo":6,"tags":["科技","少数派"]},{"title":"社区速递 160 | 水月雨首款游戏耳机与八月派友剁手清单","summary":"当前热度 Matrix机器人。","bullets":["当前热度 Matrix机器人","来自公开热榜聚合。"],"url":"https://sspai.com/post/115153","hot":"Matrix机器人","minsAgo":10,"tags":["科技","少数派"]},{"title":"更懂你的心，也更懂你：Apple Watch Series 12 体验","summary":"当前热度 ElijahLee。","bullets":["当前热度 ElijahLee","来自公开热榜聚合。"],"url":"https://sspai.com/post/115061","hot":"ElijahLee","minsAgo":12,"tags":["科技","少数派"]},{"title":"别再把攻略全甩给 AI：国庆七天河南自驾，我是这样用 Agent 的","summary":"当前热度 胡九思。","bullets":["当前热度 胡九思","来自公开热榜聚合。"],"url":"https://sspai.com/post/114945","hot":"胡九思","minsAgo":15,"tags":["科技","少数派"]},{"title":"派评 | 近期值得关注的 App","summary":"当前热度 少数派编辑部。","bullets":["当前热度 少数派编辑部","来自公开热榜聚合。"],"url":"https://sspai.com/post/115094","hot":"少数派编辑部","minsAgo":18,"tags":["科技","少数派"]},{"title":"比起折痕， iPhone Duo 的交互设计更加令人着迷","summary":"当前热度 阿斯巴盐。","bullets":["当前热度 阿斯巴盐","来自公开热榜聚合。"],"url":"https://sspai.com/post/114972","hot":"阿斯巴盐","minsAgo":21,"tags":["科技","少数派"]},{"title":"摸鱼+3 | 还剩三天班，一天一个解谜游戏","summary":"当前热度 北鸮。","bullets":["当前热度 北鸮","来自公开热榜聚合。"],"url":"https://sspai.com/post/114967","hot":"北鸮","minsAgo":25,"tags":["科技","少数派"]},{"title":"从玩家的世界掠过：Bungie 的「列车」如何驶向终焉","summary":"当前热度 Plutonium。","bullets":["当前热度 Plutonium","来自公开热榜聚合。"],"url":"https://sspai.com/post/115070","hot":"Plutonium","minsAgo":27,"tags":["科技","少数派"]}]},{"id":"wallstreet","name":"华尔街见闻","cat":"财经","color":"#1a1a2e","icon":"华","defaultOn":false,"live":true,"status":"ok","updatedAt":"2026-10-07T15:56:57.039Z","todayCount":10,"items":[{"title":"美债重启抛售、收益率创2002年来新高，美股高位承压，早盘道指跌超1%，布油盘中涨2%","summary":"当前热度 9.4万。","bullets":["当前热度 9.4万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://wallstreetcn.com/articles/3783096","hot":"9.4万","minsAgo":1,"tags":["财经","华尔街见闻"]},{"title":"数学大爆炸！OpenAI 一夜攻克722个数学难题，准黎曼猜想已被证明","summary":"当前热度 8.0万。","bullets":["当前热度 8.0万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://wallstreetcn.com/articles/3783101","hot":"8.0万","minsAgo":4,"tags":["财经","华尔街见闻"]},{"title":"标普500创出新高，但几乎只有AI交易在涨","summary":"当前热度 6.8万。","bullets":["当前热度 6.8万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://wallstreetcn.com/articles/3783091","hot":"6.8万","minsAgo":7,"tags":["财经","华尔街见闻"]},{"title":"比起核电站，美国人为什么更反感数据中心？","summary":"当前热度 6.7万。","bullets":["当前热度 6.7万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://wallstreetcn.com/articles/3783072","hot":"6.7万","minsAgo":10,"tags":["财经","华尔街见闻"]},{"title":"华尔街见闻早餐FM-Radio | 2026年10月7日","summary":"当前热度 5.9万。","bullets":["当前热度 5.9万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://wallstreetcn.com/articles/3783084","hot":"5.9万","minsAgo":12,"tags":["财经","华尔街见闻"]},{"title":"美国反对浪潮加剧！甲骨文又一巨型数据中心或因“通不了电”搁浅","summary":"当前热度 5.8万。","bullets":["当前热度 5.8万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://wallstreetcn.com/articles/3783095","hot":"5.8万","minsAgo":15,"tags":["财经","华尔街见闻"]},{"title":"中国央行连续第23个月增持黄金，9月购金节奏进一步加快","summary":"当前热度 5.1万。","bullets":["当前热度 5.1万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://wallstreetcn.com/articles/3783099","hot":"5.1万","minsAgo":19,"tags":["财经","华尔街见闻"]},{"title":"Claude拿下概率论「圣杯」，AI跨过菲尔兹奖终点线","summary":"当前热度 4.9万。","bullets":["当前热度 4.9万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://wallstreetcn.com/articles/3783107","hot":"4.9万","minsAgo":21,"tags":["财经","华尔街见闻"]},{"title":"债市抛售暂缓，科技股力挺标普、纳指齐创新高，核电股集体飙升，黄金涨逾1%，原油走V","summary":"当前热度 4.9万。","bullets":["当前热度 4.9万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://wallstreetcn.com/articles/3783046","hot":"4.9万","minsAgo":24,"tags":["财经","华尔街见闻"]},{"title":"谷歌签下科技史上最大核能协议：3590兆瓦锁定20年，Gemini同步嵌入能源运营","summary":"当前热度 4.4万。","bullets":["当前热度 4.4万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://wallstreetcn.com/articles/3783087","hot":"4.4万","minsAgo":27,"tags":["财经","华尔街见闻"]}]},{"id":"caixin","name":"财新网","cat":"财经","color":"#005bac","icon":"财","defaultOn":false,"live":false,"status":"unavailable","updatedAt":null,"todayCount":0,"items":[]},{"id":"tencent_hot","name":"腾讯新闻热门","cat":"综合","color":"#12b7f5","icon":"腾","defaultOn":false,"live":true,"status":"ok","updatedAt":"2026-10-07T15:56:57.039Z","todayCount":12,"items":[{"title":"比利时科学家独享今年价值800万元的物理诺奖，他做出了哪些重要贡献？如何通俗理解？","summary":"当前热度 乔见科学。","bullets":["当前热度 乔见科学","来自公开热榜聚合。"],"url":"https://new.qq.com/rain/a/20261006Q09YDV00","hot":"乔见科学","minsAgo":1,"tags":["综合","腾讯新闻"]},{"title":"“香港名媛蔡天凤碎尸案”曝出更多细节，前夫兄弟承认埋尸否认谋杀，前公公全否认，这起碎尸案定罪难在哪？他们可能面临什么刑罚？","summary":"当前热度 Geranium。","bullets":["当前热度 Geranium","来自公开热榜聚合。"],"url":"https://new.qq.com/rain/a/20261007Q03DNL00","hot":"Geranium","minsAgo":3,"tags":["综合","腾讯新闻"]},{"title":"中网女单美国名将高芙投诉广告牌干扰获重打，随后7-5逆转孙心然，裁判判罚重打依据是什么？为何引发这么大争议？","summary":"当前热度 不怕困难的王导演。","bullets":["当前热度 不怕困难的王导演","来自公开热榜聚合。"],"url":"https://new.qq.com/rain/a/20261006Q05CHN00","hot":"不怕困难的王导演","minsAgo":7,"tags":["综合","腾讯新闻"]},{"title":"国庆档票房累计破11亿元，为何明显低于往年？是缺少“爆款”还是观众娱乐选择发生变化？","summary":"当前热度 不怕困难的王导演。","bullets":["当前热度 不怕困难的王导演","来自公开热榜聚合。"],"url":"https://new.qq.com/rain/a/20261007Q04DTH00","hot":"不怕困难的王导演","minsAgo":9,"tags":["综合","腾讯新闻"]},{"title":"国足热身赛3连败0进球丢9球，连续创纪录输球，球队到底哪里出了问题？是球员实力不够还是教练指挥有误？","summary":"当前热度 江神。","bullets":["当前热度 江神","来自公开热榜聚合。"],"url":"https://new.qq.com/rain/a/20261006Q0BEOC00","hot":"江神","minsAgo":12,"tags":["综合","腾讯新闻"]},{"title":"汽车离加油站20多米断油，求灌油被拒后花350元叫拖车，什么情况才能卖散装油？司机和加油站谁问题更大？","summary":"当前热度 之乎者也小鱼儿。","bullets":["当前热度 之乎者也小鱼儿","来自公开热榜聚合。"],"url":"https://new.qq.com/rain/a/20261007Q0A06K00","hot":"之乎者也小鱼儿","minsAgo":15,"tags":["综合","腾讯新闻"]},{"title":"30多岁职场精英突然性情大变，记忆力断崖式下降，为何病情恶化这么快？家人该如何发现异常？","summary":"当前热度 营养师Bruce。","bullets":["当前热度 营养师Bruce","来自公开热榜聚合。"],"url":"https://new.qq.com/rain/a/20261006Q0B1O200","hot":"营养师Bruce","minsAgo":19,"tags":["综合","腾讯新闻"]},{"title":"国庆期间，许多年轻人选择和陌生人“拼房”，省下的房费藏着哪些风险？平台该如何为安全“兜底”？","summary":"当前热度 酒旅王朝。","bullets":["当前热度 酒旅王朝","来自公开热榜聚合。"],"url":"https://new.qq.com/rain/a/20261006Q0672800","hot":"酒旅王朝","minsAgo":22,"tags":["综合","腾讯新闻"]},{"title":"我国最大沙漠油田油气产量破2600万吨，为何那里油气资源丰富？超深开采如何控制成本？","summary":"当前热度 之乎者也小鱼儿。","bullets":["当前热度 之乎者也小鱼儿","来自公开热榜聚合。"],"url":"https://new.qq.com/rain/a/20261006Q04CVR00","hot":"之乎者也小鱼儿","minsAgo":24,"tags":["综合","腾讯新闻"]},{"title":"乌克兰启用人工智能炮塔对付俄无人机，为什么装在桥梁上？这种武器能替代传统防空吗？","summary":"当前热度 之乎者也小鱼儿。","bullets":["当前热度 之乎者也小鱼儿","来自公开热榜聚合。"],"url":"https://new.qq.com/rain/a/20261007Q02T8F00","hot":"之乎者也小鱼儿","minsAgo":27,"tags":["综合","腾讯新闻"]}]},{"id":"douban_movie","name":"豆瓣电影周榜","cat":"娱乐","color":"#00b51d","icon":"豆","defaultOn":false,"live":true,"status":"ok","updatedAt":"2026-10-07T15:56:57.039Z","todayCount":10,"items":[{"title":"求救信号","summary":"当前热度 7。","bullets":["当前热度 7","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://movie.douban.com/subject/36439868/","hot":"7","minsAgo":1,"tags":["娱乐","豆瓣电影"]},{"title":"希望","summary":"当前热度 5。","bullets":["当前热度 5","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://movie.douban.com/subject/36179101/","hot":"5","minsAgo":3,"tags":["娱乐","豆瓣电影"]},{"title":"罗斯","summary":"当前热度 8。","bullets":["当前热度 8","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://movie.douban.com/subject/35322132/","hot":"8","minsAgo":7,"tags":["娱乐","豆瓣电影"]},{"title":"抓特务","summary":"当前热度 7。","bullets":["当前热度 7","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://movie.douban.com/subject/36812879/","hot":"7","minsAgo":10,"tags":["娱乐","豆瓣电影"]},{"title":"激情邀约","summary":"当前热度 7。","bullets":["当前热度 7","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://movie.douban.com/subject/35801126/","hot":"7","minsAgo":12,"tags":["娱乐","豆瓣电影"]},{"title":"盒子里的羊","summary":"当前热度 5。","bullets":["当前热度 5","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://movie.douban.com/subject/37227467/","hot":"5","minsAgo":16,"tags":["娱乐","豆瓣电影"]},{"title":"夜王","summary":"当前热度 7。","bullets":["当前热度 7","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://movie.douban.com/subject/37375594/","hot":"7","minsAgo":19,"tags":["娱乐","豆瓣电影"]},{"title":"死亡禁区实录","summary":"当前热度 4。","bullets":["当前热度 4","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://movie.douban.com/subject/37380650/","hot":"4","minsAgo":22,"tags":["娱乐","豆瓣电影"]},{"title":"大濛","summary":"当前热度 8。","bullets":["当前热度 8","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://movie.douban.com/subject/36680492/","hot":"8","minsAgo":24,"tags":["娱乐","豆瓣电影"]},{"title":"不成功穿越指南","summary":"当前热度 6。","bullets":["当前热度 6","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://movie.douban.com/subject/36823889/","hot":"6","minsAgo":27,"tags":["娱乐","豆瓣电影"]}]},{"id":"netease","name":"网易新闻","cat":"综合","color":"#c4302b","icon":"易","defaultOn":false,"live":false,"status":"unavailable","updatedAt":null,"todayCount":0,"items":[]},{"id":"baidu_hot","name":"百度热搜","cat":"综合","color":"#2932e1","icon":"百","defaultOn":true,"live":true,"status":"ok","updatedAt":"2026-10-07T15:56:57.039Z","todayCount":12,"items":[{"title":"幸福都是奋斗出来的","summary":"当前热度 790.5万。","bullets":["当前热度 790.5万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://www.baidu.com/s?wd=%E5%B9%B8%E7%A6%8F%E9%83%BD%E6%98%AF%E5%A5%8B%E6%96%97%E5%87%BA%E6%9D%A5%E7%9A%84","hot":"790.5万","minsAgo":1,"tags":["综合","百度热搜"]},{"title":"孙颖莎爆冷1-3不敌泰国选手","summary":"当前热度 780.9万。","bullets":["当前热度 780.9万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://www.baidu.com/s?wd=%E5%AD%99%E9%A2%96%E8%8E%8E%E7%88%86%E5%86%B71-3%E4%B8%8D%E6%95%8C%E6%B3%B0%E5%9B%BD%E9%80%89%E6%89%8B","hot":"780.9万","minsAgo":4,"tags":["综合","百度热搜"]},{"title":"上3休1再上5休2","summary":"当前热度 771.5万。","bullets":["当前热度 771.5万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://www.baidu.com/s?wd=%E4%B8%8A3%E4%BC%911%E5%86%8D%E4%B8%8A5%E4%BC%912","hot":"771.5万","minsAgo":6,"tags":["综合","百度热搜"]},{"title":"中国新能源跑出四个“全球第一”","summary":"当前热度 761.8万。","bullets":["当前热度 761.8万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://www.baidu.com/s?wd=%E4%B8%AD%E5%9B%BD%E6%96%B0%E8%83%BD%E6%BA%90%E8%B7%91%E5%87%BA%E5%9B%9B%E4%B8%AA%E2%80%9C%E5%85%A8%E7%90%83%E7%AC%AC%E4%B8%80%E2%80%9D","hot":"761.8万","minsAgo":10,"tags":["综合","百度热搜"]},{"title":"郑钦文晋级中网八强","summary":"当前热度 752.0万。","bullets":["当前热度 752.0万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://www.baidu.com/s?wd=%E9%83%91%E9%92%A6%E6%96%87%E6%99%8B%E7%BA%A7%E4%B8%AD%E7%BD%91%E5%85%AB%E5%BC%BA","hot":"752.0万","minsAgo":12,"tags":["综合","百度热搜"]},{"title":"时隔14年进口片再夺国庆档票房日冠","summary":"当前热度 742.9万。","bullets":["当前热度 742.9万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://www.baidu.com/s?wd=%E6%97%B6%E9%9A%9414%E5%B9%B4%E8%BF%9B%E5%8F%A3%E7%89%87%E5%86%8D%E5%A4%BA%E5%9B%BD%E5%BA%86%E6%A1%A3%E7%A5%A8%E6%88%BF%E6%97%A5%E5%86%A0","hot":"742.9万","minsAgo":16,"tags":["综合","百度热搜"]},{"title":"离加油站20米燃油耗尽 车主求助被拒","summary":"当前热度 733.4万。","bullets":["当前热度 733.4万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://www.baidu.com/s?wd=%E7%A6%BB%E5%8A%A0%E6%B2%B9%E7%AB%9920%E7%B1%B3%E7%87%83%E6%B2%B9%E8%80%97%E5%B0%BD+%E8%BD%A6%E4%B8%BB%E6%B1%82%E5%8A%A9%E8%A2%AB%E6%8B%92","hot":"733.4万","minsAgo":19,"tags":["综合","百度热搜"]},{"title":"国乒混双组合全部出局","summary":"当前热度 723.5万。","bullets":["当前热度 723.5万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://www.baidu.com/s?wd=%E5%9B%BD%E4%B9%92%E6%B7%B7%E5%8F%8C%E7%BB%84%E5%90%88%E5%85%A8%E9%83%A8%E5%87%BA%E5%B1%80","hot":"723.5万","minsAgo":22,"tags":["综合","百度热搜"]},{"title":"世界第1被世界第101淘汰","summary":"当前热度 714.1万。","bullets":["当前热度 714.1万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://www.baidu.com/s?wd=%E4%B8%96%E7%95%8C%E7%AC%AC1%E8%A2%AB%E4%B8%96%E7%95%8C%E7%AC%AC101%E6%B7%98%E6%B1%B0","hot":"714.1万","minsAgo":25,"tags":["综合","百度热搜"]},{"title":"孙颖莎：昨晚有点发烧 不用过度担心","summary":"当前热度 704.6万。","bullets":["当前热度 704.6万","来自公开热榜聚合，详情可在页内展开查看。"],"url":"https://www.baidu.com/s?wd=%E5%AD%99%E9%A2%96%E8%8E%8E%EF%BC%9A%E6%98%A8%E6%99%9A%E6%9C%89%E7%82%B9%E5%8F%91%E7%83%A7+%E4%B8%8D%E7%94%A8%E8%BF%87%E5%BA%A6%E6%8B%85%E5%BF%83","hot":"704.6万","minsAgo":27,"tags":["综合","百度热搜"]}]},{"id":"jiemian","name":"界面新闻","cat":"财经","color":"#e60012","icon":"界","defaultOn":false,"live":false,"status":"unavailable","updatedAt":null,"todayCount":0,"items":[]},{"id":"yicai","name":"第一财经","cat":"财经","color":"#c8102e","icon":"一","defaultOn":false,"live":true,"status":"ok","updatedAt":"2026-10-07T15:56:57.039Z","todayCount":10,"items":[{"title":"国庆假期首日文旅消费券热度增4倍，中国游客入住全球超2000个城市的酒店","summary":"国庆假期首日文旅消费券热度增4倍，中国游客入住全球超2000个城市的酒店","bullets":["国庆假期首日文旅消费券热度增4倍，中国游客入住全球超2000个城市的酒店"],"url":"https://www.yicai.com/news/103383702.html","minsAgo":1,"tags":["财经","第一财经"]},{"title":"十一游客躲避人潮反向涌入小县城，年轻人流行奔县学手艺","summary":"十一游客躲避人潮反向涌入小县城，年轻人流行奔县学手艺","bullets":["十一游客躲避人潮反向涌入小县城，年轻人流行奔县学手艺"],"url":"https://www.yicai.com/news/103383617.html","minsAgo":4,"tags":["财经","第一财经"]},{"title":"国庆假期第二日机票价格“跳水”","summary":"国庆假期第二日机票价格“跳水”","bullets":["国庆假期第二日机票价格“跳水”"],"url":"https://www.yicai.com/news/103383845.html","minsAgo":6,"tags":["财经","第一财经"]},{"title":"多数新势力车企没有“金九”","summary":"多数新势力车企没有“金九”","bullets":["多数新势力车企没有“金九”"],"url":"https://www.yicai.com/news/103383844.html","minsAgo":9,"tags":["财经","第一财经"]},{"title":"有人想离开，也有人排队等着进：空乘下跪事件背后的职业围城","summary":"有人想离开，也有人排队等着进：空乘下跪事件背后的职业围城","bullets":["有人想离开，也有人排队等着进：空乘下跪事件背后的职业围城"],"url":"https://www.yicai.com/news/103384104.html","minsAgo":13,"tags":["财经","第一财经"]},{"title":"道指重挫400点，9月累跌4%，纳斯达克金龙中国指数收涨，美债收益率继续上行，国际油价走高","summary":"道指重挫400点，9月累跌4%，纳斯达克金龙中国指数收涨，美债收益率继续上行，国际油价走高","bullets":["道指重挫400点，9月累跌4%，纳斯达克金龙中国指数收涨，美债收益率继续上行，国际油价走高"],"url":"https://www.yicai.com/news/103383481.html","minsAgo":16,"tags":["财经","第一财经"]},{"title":"前三季成绩单来了！百强房企卖房超2.2万亿元，新盘正抢跑入市","summary":"前三季成绩单来了！百强房企卖房超2.2万亿元，新盘正抢跑入市","bullets":["前三季成绩单来了！百强房企卖房超2.2万亿元，新盘正抢跑入市"],"url":"https://www.yicai.com/news/103383628.html","minsAgo":18,"tags":["财经","第一财经"]},{"title":"一批北大和清华博士，从字节和腾讯拿到数百万年薪","summary":"一批北大和清华博士，从字节和腾讯拿到数百万年薪","bullets":["一批北大和清华博士，从字节和腾讯拿到数百万年薪"],"url":"https://www.yicai.com/news/103384730.html","minsAgo":22,"tags":["财经","第一财经"]},{"title":"独家｜在港机构加码清理内地非法交易，多家收紧部分观望","summary":"独家｜在港机构加码清理内地非法交易，多家收紧部分观望","bullets":["独家｜在港机构加码清理内地非法交易，多家收紧部分观望"],"url":"https://www.yicai.com/news/103383593.html","minsAgo":24,"tags":["财经","第一财经"]},{"title":"纳指再创收盘新高，硬盘股反弹、PTC大涨逾33%，国际油价跌近2%","summary":"纳指再创收盘新高，硬盘股反弹、PTC大涨逾33%，国际油价跌近2%","bullets":["纳指再创收盘新高，硬盘股反弹、PTC大涨逾33%，国际油价跌近2%"],"url":"https://www.yicai.com/news/103384612.html","minsAgo":28,"tags":["财经","第一财经"]}]},{"id":"sohu","name":"搜狐新闻","cat":"综合","color":"#ffc107","icon":"狐","defaultOn":false,"live":false,"status":"unavailable","updatedAt":null,"todayCount":0,"items":[]},{"id":"sina_mil","name":"新浪军事新闻点击榜","cat":"综合","color":"#e6162d","icon":"军","defaultOn":false,"live":false,"status":"unavailable","updatedAt":null,"todayCount":0,"items":[]},{"id":"tieba_hot","name":"贴吧热议","cat":"娱乐","color":"#2d78f4","icon":"贴","defaultOn":false,"live":true,"status":"ok","updatedAt":"2026-10-07T15:56:57.039Z","todayCount":12,"items":[{"title":"Zuian美签被拒,369紧急出征","summary":"当前热度 255.3W实时讨论。","bullets":["当前热度 255.3W实时讨论","来自公开热榜聚合，详情可在页内展开查看。"],"url":"http://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28366389&topic_name=Zuian%E7%BE%8E%E7%AD%BE%E8%A2%AB%E6%8B%92%2C369%E7%B4%A7%E6%80%A5%E5%87%BA%E5%BE%81","hot":"255.3W实时讨论","minsAgo":1,"tags":["娱乐","贴吧热议"]},{"title":"十一长假收尾,吧友骑行晒秋景","summary":"当前热度 232.8W实时讨论。","bullets":["当前热度 232.8W实时讨论","来自公开热榜聚合，详情可在页内展开查看。"],"url":"http://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28366392&topic_name=%E5%8D%81%E4%B8%80%E9%95%BF%E5%81%87%E6%94%B6%E5%B0%BE%2C%E5%90%A7%E5%8F%8B%E9%AA%91%E8%A1%8C%E6%99%92%E7%A7%8B%E6%99%AF","hot":"232.8W实时讨论","minsAgo":4,"tags":["娱乐","贴吧热议"]},{"title":"访问移除,英雄联盟将取消OB","summary":"当前热度 211.7W实时讨论。","bullets":["当前热度 211.7W实时讨论","来自公开热榜聚合，详情可在页内展开查看。"],"url":"http://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28366388&topic_name=%E8%AE%BF%E9%97%AE%E7%A7%BB%E9%99%A4%2C%E8%8B%B1%E9%9B%84%E8%81%94%E7%9B%9F%E5%B0%86%E5%8F%96%E6%B6%88OB","hot":"211.7W实时讨论","minsAgo":7,"tags":["娱乐","贴吧热议"]},{"title":"男友失业变巨婴,七年感情告急","summary":"当前热度 154.2W实时讨论。","bullets":["当前热度 154.2W实时讨论","来自公开热榜聚合，详情可在页内展开查看。"],"url":"http://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28366386&topic_name=%E7%94%B7%E5%8F%8B%E5%A4%B1%E4%B8%9A%E5%8F%98%E5%B7%A8%E5%A9%B4%2C%E4%B8%83%E5%B9%B4%E6%84%9F%E6%83%85%E5%91%8A%E6%80%A5","hot":"154.2W实时讨论","minsAgo":10,"tags":["娱乐","贴吧热议"]},{"title":"吧友教AI写文,焚诀大公开","summary":"当前热度 124.2W实时讨论。","bullets":["当前热度 124.2W实时讨论","来自公开热榜聚合，详情可在页内展开查看。"],"url":"http://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28366390&topic_name=%E5%90%A7%E5%8F%8B%E6%95%99AI%E5%86%99%E6%96%87%2C%E7%84%9A%E8%AF%80%E5%A4%A7%E5%85%AC%E5%BC%80","hot":"124.2W实时讨论","minsAgo":13,"tags":["娱乐","贴吧热议"]},{"title":"游戏结缘42天,奔现即结婚","summary":"当前热度 88.4W实时讨论。","bullets":["当前热度 88.4W实时讨论","来自公开热榜聚合，详情可在页内展开查看。"],"url":"http://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28366387&topic_name=%E6%B8%B8%E6%88%8F%E7%BB%93%E7%BC%9842%E5%A4%A9%2C%E5%A5%94%E7%8E%B0%E5%8D%B3%E7%BB%93%E5%A9%9A","hot":"88.4W实时讨论","minsAgo":15,"tags":["娱乐","贴吧热议"]},{"title":"吧友锐评生化危机:蛔虫战弱智","summary":"当前热度 65.9W实时讨论。","bullets":["当前热度 65.9W实时讨论","来自公开热榜聚合，详情可在页内展开查看。"],"url":"http://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28366377&topic_name=%E5%90%A7%E5%8F%8B%E9%94%90%E8%AF%84%E7%94%9F%E5%8C%96%E5%8D%B1%E6%9C%BA%3A%E8%9B%94%E8%99%AB%E6%88%98%E5%BC%B1%E6%99%BA","hot":"65.9W实时讨论","minsAgo":18,"tags":["娱乐","贴吧热议"]},{"title":"网恋猛砸3w5,一个月就被甩","summary":"当前热度 46.9W实时讨论。","bullets":["当前热度 46.9W实时讨论","来自公开热榜聚合，详情可在页内展开查看。"],"url":"http://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28366378&topic_name=%E7%BD%91%E6%81%8B%E7%8C%9B%E7%A0%B83w5%2C%E4%B8%80%E4%B8%AA%E6%9C%88%E5%B0%B1%E8%A2%AB%E7%94%A9","hot":"46.9W实时讨论","minsAgo":22,"tags":["娱乐","贴吧热议"]},{"title":"不懂就问,排位怎么打才能赢?","summary":"当前热度 33.3W实时讨论。","bullets":["当前热度 33.3W实时讨论","来自公开热榜聚合，详情可在页内展开查看。"],"url":"http://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28366384&topic_name=%E4%B8%8D%E6%87%82%E5%B0%B1%E9%97%AE%2C%E6%8E%92%E4%BD%8D%E6%80%8E%E4%B9%88%E6%89%93%E6%89%8D%E8%83%BD%E8%B5%A2%3F","hot":"33.3W实时讨论","minsAgo":25,"tags":["娱乐","贴吧热议"]},{"title":"圣地巡礼,吧友次元壁碎了","summary":"当前热度 29.3W实时讨论。","bullets":["当前热度 29.3W实时讨论","来自公开热榜聚合，详情可在页内展开查看。"],"url":"http://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28366379&topic_name=%E5%9C%A3%E5%9C%B0%E5%B7%A1%E7%A4%BC%2C%E5%90%A7%E5%8F%8B%E6%AC%A1%E5%85%83%E5%A3%81%E7%A2%8E%E4%BA%86","hot":"29.3W实时讨论","minsAgo":27,"tags":["娱乐","贴吧热议"]}]},{"id":"tmtpost","name":"钛媒体","cat":"科技","color":"#e60012","icon":"钛","defaultOn":false,"live":false,"status":"unavailable","updatedAt":null,"todayCount":0,"items":[]},{"id":"jike","name":"即刻精选","cat":"科技","color":"#ffe300","icon":"即","defaultOn":false,"live":true,"status":"ok","updatedAt":"2026-10-07T15:56:57.039Z","todayCount":10,"items":[{"title":"产品经理的日常 10月07日","summary":"产品经理的日常 10月07日","bullets":["产品经理的日常 10月07日"],"url":"https://m.okjike.com/originalPosts/6ac5fcfe141b85b292fbcee7","minsAgo":1,"tags":["科技","即刻"]},{"title":"产品经理的日常 10月07日","summary":"产品经理的日常 10月07日","bullets":["产品经理的日常 10月07日"],"url":"https://m.okjike.com/originalPosts/6ac5dca3bd0563695b72ef76","minsAgo":4,"tags":["科技","即刻"]},{"title":"产品经理的日常 10月07日","summary":"产品经理的日常 10月07日","bullets":["产品经理的日常 10月07日"],"url":"https://m.okjike.com/originalPosts/6ac5bbfd756bbb66582f58a3","minsAgo":6,"tags":["科技","即刻"]},{"title":"产品经理的日常 10月07日","summary":"产品经理的日常 10月07日","bullets":["产品经理的日常 10月07日"],"url":"https://m.okjike.com/originalPosts/6ac52d02bd0563695b60d6e4","minsAgo":9,"tags":["科技","即刻"]},{"title":"产品经理的日常 10月06日","summary":"产品经理的日常 10月06日","bullets":["产品经理的日常 10月06日"],"url":"https://m.okjike.com/originalPosts/6ac4e38a756bbb66581910b3","minsAgo":12,"tags":["科技","即刻"]},{"title":"产品经理的日常 10月05日","summary":"产品经理的日常 10月05日","bullets":["产品经理的日常 10月05日"],"url":"https://m.okjike.com/originalPosts/6ac3a4da5d9806ffcb1c0320","minsAgo":16,"tags":["科技","即刻"]},{"title":"产品经理的日常 10月05日","summary":"产品经理的日常 10月05日","bullets":["产品经理的日常 10月05日"],"url":"https://m.okjike.com/originalPosts/6ac363f5756bbb6658f2b009","minsAgo":18,"tags":["科技","即刻"]},{"title":"产品经理的日常 10月04日","summary":"产品经理的日常 10月04日","bullets":["产品经理的日常 10月04日"],"url":"https://m.okjike.com/originalPosts/6ac229eafda7003d6115b9fa","minsAgo":22,"tags":["科技","即刻"]},{"title":"产品经理的日常 10月03日","summary":"产品经理的日常 10月03日","bullets":["产品经理的日常 10月03日"],"url":"https://m.okjike.com/originalPosts/6ac08adfb61bf7f1b30b3e78","minsAgo":25,"tags":["科技","即刻"]},{"title":"产品经理的日常 10月03日","summary":"产品经理的日常 10月03日","bullets":["产品经理的日常 10月03日"],"url":"https://m.okjike.com/originalPosts/6ac06f8dbd0563695be589ae","minsAgo":27,"tags":["科技","即刻"]}]},{"id":"eeo","name":"经济观察网","cat":"财经","color":"#003366","icon":"经","defaultOn":false,"live":false,"status":"unavailable","updatedAt":null,"todayCount":0,"items":[]}],"catalog":[{"id":"weibo_hot","name":"微博热搜榜","cat":"综合","color":"#e6162d","icon":"微","defaultOn":true},{"id":"zhihu_hot","name":"知乎热榜","cat":"综合","color":"#0084ff","icon":"知","defaultOn":true},{"id":"douyin_hot","name":"抖音热榜","cat":"娱乐","color":"#111111","icon":"抖","defaultOn":false},{"id":"toutiao_hot","name":"今日头条热榜","cat":"综合","color":"#f04142","icon":"头","defaultOn":true},{"id":"thepaper_hot","name":"澎湃新闻热榜","cat":"综合","color":"#e60012","icon":"湃","defaultOn":false},{"id":"xinwen_lianbo","name":"新闻联播速览","cat":"综合","color":"#c8102e","icon":"联","defaultOn":false},{"id":"ithome_daily","name":"IT之家日榜","cat":"科技","color":"#d35400","icon":"IT","defaultOn":true},{"id":"ithome_flash","name":"IT之家快讯","cat":"科技","color":"#e67e22","icon":"讯","defaultOn":false},{"id":"bilibili_hot","name":"Bilibili热门","cat":"娱乐","color":"#fb7299","icon":"B","defaultOn":false},{"id":"weixin_tech","name":"微信科技热门","cat":"科技","color":"#07c160","icon":"微","defaultOn":false},{"id":"kr36","name":"36氪热门","cat":"科技","color":"#1a73e8","icon":"36","defaultOn":false},{"id":"huxiu","name":"虎嗅精选","cat":"科技","color":"#ff6600","icon":"虎","defaultOn":false},{"id":"sspai","name":"少数派","cat":"科技","color":"#c45c26","icon":"派","defaultOn":false},{"id":"wallstreet","name":"华尔街见闻","cat":"财经","color":"#1a1a2e","icon":"华","defaultOn":false},{"id":"caixin","name":"财新网","cat":"财经","color":"#005bac","icon":"财","defaultOn":false},{"id":"tencent_hot","name":"腾讯新闻热门","cat":"综合","color":"#12b7f5","icon":"腾","defaultOn":false},{"id":"douban_movie","name":"豆瓣电影周榜","cat":"娱乐","color":"#00b51d","icon":"豆","defaultOn":false},{"id":"netease","name":"网易新闻","cat":"综合","color":"#c4302b","icon":"易","defaultOn":false},{"id":"baidu_hot","name":"百度热搜","cat":"综合","color":"#2932e1","icon":"百","defaultOn":true},{"id":"jiemian","name":"界面新闻","cat":"财经","color":"#e60012","icon":"界","defaultOn":false},{"id":"yicai","name":"第一财经","cat":"财经","color":"#c8102e","icon":"一","defaultOn":false},{"id":"sohu","name":"搜狐新闻","cat":"综合","color":"#ffc107","icon":"狐","defaultOn":false},{"id":"sina_mil","name":"新浪军事新闻点击榜","cat":"综合","color":"#e6162d","icon":"军","defaultOn":false},{"id":"tieba_hot","name":"贴吧热议","cat":"娱乐","color":"#2d78f4","icon":"贴","defaultOn":false},{"id":"tmtpost","name":"钛媒体","cat":"科技","color":"#e60012","icon":"钛","defaultOn":false},{"id":"jike","name":"即刻精选","cat":"科技","color":"#ffe300","icon":"即","defaultOn":false},{"id":"eeo","name":"经济观察网","cat":"财经","color":"#003366","icon":"经","defaultOn":false}]};
+</script>
+<script>
+
+(function () {
+  "use strict";
+  var SUBS_KEY = "yaozhi_subs_v3";
+  var LAYOUT_KEY = "yaozhi_layout_v4";
+  var HIST_KEY = "yaozhi_hist_v3";
+  var CATS = ["全部", "综合", "科技", "娱乐", "财经", "汽车"];
+  var DATA = null;
+  var activeCat = "全部";
+  var layout = "horizontal";
+  var speaking = false;
+
+  try { layout = localStorage.getItem(LAYOUT_KEY) || "horizontal"; } catch (e) {}
+
+  function $(id) { return document.getElementById(id); }
+  function $$(sel, root) {
+    return Array.prototype.slice.call((root || document).querySelectorAll(sel));
+  }
+  function escapeHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function defaultSubs() {
+    var list = (DATA && DATA.sources) || [];
+    var out = [];
+    for (var i = 0; i < list.length; i++) if (list[i].defaultOn) out.push(list[i].id);
+    return out.length ? out : ["weibo_hot", "zhihu_hot", "toutiao_hot", "ithome_daily", "baidu_hot"];
+  }
+  function loadSubs() {
+    try {
+      var raw = localStorage.getItem(SUBS_KEY);
+      if (!raw) return defaultSubs();
+      var arr = JSON.parse(raw);
+      if (!arr || !arr.length) return defaultSubs();
+      var known = {};
+      var sources = (DATA && DATA.sources) || [];
+      for (var i = 0; i < sources.length; i++) known[sources[i].id] = 1;
+      var filtered = [];
+      for (var j = 0; j < arr.length; j++) if (!sources.length || known[arr[j]]) filtered.push(arr[j]);
+      return filtered.length ? filtered : defaultSubs();
+    } catch (e) { return defaultSubs(); }
+  }
+  function saveSubs(subs) {
+    try { localStorage.setItem(SUBS_KEY, JSON.stringify(subs)); } catch (e) {}
+  }
+  function sourceById(id) {
+    var sources = (DATA && DATA.sources) || [];
+    for (var i = 0; i < sources.length; i++) if (sources[i].id === id) return sources[i];
+    return null;
+  }
+  function minsLabel(m) {
+    if (m == null) return "刚刚";
+    if (m < 1) return "刚刚";
+    if (m < 60) return m + "分钟前";
+    if (m < 1440) return Math.floor(m / 60) + "小时前";
+    return Math.floor(m / 1440) + "天前";
+  }
+  function pushHistory(item) {
+    try {
+      var arr = JSON.parse(localStorage.getItem(HIST_KEY) || "[]");
+      arr.unshift({ title: item.title, at: Date.now(), source: item.sourceName || "" });
+      localStorage.setItem(HIST_KEY, JSON.stringify(arr.slice(0, 50)));
+    } catch (e) {}
+  }
+
+  function setDateHeader() {
+    var elBig = $("dateBig"), elSub = $("dateSub");
+    if (!elBig || !elSub) return;
+    var now = new Date();
+    elBig.textContent = now.toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai", month: "long", day: "numeric" });
+    var week = now.toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai", weekday: "long" });
+    var lunar = "";
+    try {
+      lunar = "农历" + new Intl.DateTimeFormat("zh-CN-u-ca-chinese", {
+        timeZone: "Asia/Shanghai", month: "long", day: "numeric"
+      }).format(now).replace(/\s/g, "");
+    } catch (e) {}
+    elSub.textContent = lunar ? week + " " + lunar : week;
+  }
+
+  function openSheet(item, source) {
+    pushHistory({ title: item.title, sourceName: (source && source.name) || item.sourceName || "" });
+    $("sheetSource").textContent = (source && source.name) || item.sourceName || "资讯";
+    $("sheetHot").textContent = item.hot ? ("热度 " + item.hot) : "";
+    $("sheetTitle").textContent = item.title;
+    var tags = item.tags || [(source && source.cat), (source && source.name)].filter(Boolean);
+    $("sheetTags").innerHTML = tags.filter(Boolean).slice(0, 4).map(function (t) {
+      return "<span>" + escapeHtml(t) + "</span>";
+    }).join("");
+    var bullets = (item.bullets && item.bullets.length) ? item.bullets : [item.summary || item.title];
+    $("sheetBullets").innerHTML = bullets.slice(0, 4).map(function (b) {
+      return "<li>" + escapeHtml(b) + "</li>";
+    }).join("");
+    $("sheetSummary").textContent = item.summary || "";
+    var a = $("sheetLink");
+    if (item.url) { a.hidden = false; a.href = item.url; }
+    else { a.hidden = true; a.removeAttribute("href"); }
+    $("sheet").hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+  function closeSheet() { $("sheet").hidden = true; document.body.style.overflow = ""; }
+  function closeSourceSheet() { $("sourceSheet").hidden = true; document.body.style.overflow = ""; }
+
+  function itemRow(it, i, withSummary) {
+    var nClass = i < 3 ? "n top" : "n";
+    var sub = "";
+    if (withSummary && it.summary) {
+      sub = '<span class="sub">' + escapeHtml(it.summary.slice(0, 72)) + (it.summary.length > 72 ? "…" : "") + "</span>";
+    }
+    return '<li data-i="' + i + '" role="button" tabindex="0"><span class="' + nClass + '">' + (i + 1) +
+      '</span><span class="t">' + escapeHtml(it.title) + sub + "</span></li>";
+  }
+  function bindItemClicks(root, src) {
+    $$("li[data-i]", root).forEach(function (li) {
+      li.onclick = function (e) {
+        e.preventDefault();
+        var it = src.items[Number(li.getAttribute("data-i"))];
+        if (it) openSheet(it, src);
+      };
+    });
+  }
+
+  function openSourceSheet(src) {
+    $("sourceSheetTitle").textContent = src.name;
+    var list = $("sourceSheetList");
+    if (!src.items || !src.items.length) {
+      list.innerHTML = '<li class="empty">暂无条目</li>';
+    } else {
+      list.innerHTML = src.items.map(function (it, i) { return itemRow(it, i, true); }).join("");
+      bindItemClicks(list, src);
+    }
+    $("sourceSheet").hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+
+  function renderMorning() {
+    var list = $("morningList");
+    if (!list) return;
+    var items = (DATA && DATA.morning) || [];
+    if (!items.length) { list.innerHTML = '<li class="empty">暂无早报</li>'; return; }
+    list.innerHTML = items.map(function (it, i) {
+      var nClass = i < 3 ? "n top" : "n";
+      return '<li data-mi="' + i + '" role="button"><span class="' + nClass + '">' + (i + 1) +
+        '</span><span class="t">' + escapeHtml(it.title) + "</span></li>";
+    }).join("");
+    $$("li[data-mi]", list).forEach(function (li) {
+      li.onclick = function (e) {
+        e.preventDefault();
+        var it = items[Number(li.getAttribute("data-mi"))];
+        if (it) openSheet(it, sourceById(it.sourceId) || { name: it.sourceName });
+      };
+    });
+  }
+
+  function renderMine() {
+    var wrap = $("mineCards");
+    if (!wrap) return;
+    var subs = loadSubs();
+    wrap.className = "mine-cards " + (layout === "horizontal" ? "horizontal" : "vertical");
+    var btnLayout = $("btnLayout");
+    if (btnLayout) btnLayout.textContent = layout === "horizontal" ? "转为竖排" : "转为横排";
+    var cards = [];
+    for (var s = 0; s < subs.length; s++) {
+      var src = sourceById(subs[s]);
+      if (!src) continue;
+      var items = (src.items || []).slice(0, 10);
+      var body = items.length
+        ? '<ol class="num-list">' + items.map(function (it, i) { return itemRow(it, i, false); }).join("") + "</ol>"
+        : '<p class="empty">' + (src.status === "unavailable" ? "暂不可用" : "暂无更新") + "</p>";
+      cards.push(
+        '<article class="card src-card" data-src="' + src.id + '"><div class="src-head">' +
+        '<div class="src-icon" style="background:' + (src.color || "#444") + '">' + escapeHtml(src.icon || src.name.slice(0, 1)) + "</div>" +
+        '<div class="src-name">' + escapeHtml(src.name) + "</div>" +
+        '<button type="button" class="pill-more btn-all" data-all="' + src.id + '">查看全部 <span>›</span></button></div>' +
+        body + "</article>"
+      );
+    }
+    wrap.innerHTML = cards.length ? cards.join("") : '<p class="empty">还没有订阅。去「订阅广场」挑几个吧。</p>';
+    $$(".btn-all", wrap).forEach(function (btn) {
+      btn.onclick = function (e) {
+        e.stopPropagation();
+        var src = sourceById(btn.getAttribute("data-all"));
+        if (src) openSourceSheet(src);
+      };
+    });
+    $$(".src-card", wrap).forEach(function (card) {
+      var src = sourceById(card.getAttribute("data-src"));
+      if (src) bindItemClicks(card, src);
+    });
+    var c = $("meSubCount");
+    if (c) c.textContent = String(subs.length);
+  }
+
+  function renderTimeline() {
+    var ul = $("hotTimeline");
+    if (!ul) return;
+    var items = ((DATA && DATA.timeline) || []).slice(0, 20);
+    if (!items.length) { ul.innerHTML = '<li class="empty">暂无热榜</li>'; return; }
+    ul.innerHTML = items.map(function (it, i) {
+      return '<li data-ti="' + i + '"><div class="tl-meta">' + minsLabel(it.minsAgo) + " · " +
+        escapeHtml(it.sourceName || "") + '</div><div class="tl-title">' + escapeHtml(it.title) + "</div></li>";
+    }).join("");
+    $$("li[data-ti]", ul).forEach(function (li) {
+      li.onclick = function (e) {
+        e.preventDefault();
+        var it = items[Number(li.getAttribute("data-ti"))];
+        if (it) openSheet(it, sourceById(it.sourceId) || { name: it.sourceName });
+      };
+    });
+  }
+
+  function renderTech() {
+    var ul = $("techTimeline");
+    if (!ul) return;
+    var items = (DATA && DATA.techEvents) || [];
+    ul.innerHTML = items.map(function (it) {
+      return '<li><div class="tl-meta">' + escapeHtml(it.time) + " · " + escapeHtml(it.place || "") +
+        '</div><div class="tl-title">' + escapeHtml(it.title) + "</div></li>";
+    }).join("");
+  }
+
+  function renderChips() {
+    var box = $("catChips");
+    if (!box) return;
+    box.innerHTML = CATS.map(function (c) {
+      return '<button type="button" class="chip' + (c === activeCat ? " active" : "") + '" data-cat="' + c + '">' + c + "</button>";
+    }).join("");
+    $$(".chip", box).forEach(function (btn) {
+      btn.onclick = function () {
+        activeCat = btn.getAttribute("data-cat");
+        renderChips();
+        renderPlaza();
+      };
+    });
+  }
+
+  function renderPlaza() {
+    var list = $("plazaList");
+    if (!list) return;
+    var subs = {};
+    loadSubs().forEach(function (id) { subs[id] = 1; });
+    var rows = (DATA && DATA.sources) || [];
+    if (activeCat !== "全部") rows = rows.filter(function (s) { return s.cat === activeCat; });
+    if (!rows.length) { list.innerHTML = '<li class="empty">该分类暂无信源</li>'; return; }
+    list.innerHTML = rows.map(function (s) {
+      var on = !!subs[s.id];
+      var unavailable = s.status === "unavailable" || !s.live;
+      var meta = unavailable ? "暂不可用" : ("今日" + (s.todayCount || (s.items && s.items.length) || 0) + "条");
+      return '<li class="plaza-row"><div class="plaza-icon" style="background:' + (s.color || "#444") + '">' +
+        escapeHtml(s.icon || s.name.slice(0, 1)) + '</div><div class="plaza-info"><div class="name">' +
+        escapeHtml(s.name) + '</div><div class="meta">' + meta + '</div></div>' +
+        '<button type="button" class="btn-sub' + (on ? " on" : "") + '" data-toggle="' + s.id + '">' +
+        (on ? "已订阅" : (unavailable ? "暂不可用" : "订阅")) + "</button></li>";
+    }).join("");
+    $$("[data-toggle]", list).forEach(function (btn) {
+      btn.onclick = function () {
+        var id = btn.getAttribute("data-toggle");
+        var arr = loadSubs();
+        var idx = arr.indexOf(id);
+        if (idx >= 0) arr.splice(idx, 1); else arr.push(id);
+        saveSubs(arr);
+        renderPlaza();
+        renderMine();
+      };
+    });
+  }
+
+  function renderAll() {
+    try {
+      setDateHeader();
+      renderMorning();
+      renderMine();
+      renderTimeline();
+      renderTech();
+      renderChips();
+      renderPlaza();
+      var hint = $("updatedHint");
+      if (hint) {
+        hint.textContent = (DATA && DATA.updatedAtLabel)
+          ? ("数据更新于 " + DATA.updatedAtLabel + "（北京时间）· 点击标题页内展开")
+          : "已加载";
+      }
+      var meSub = $("meSub");
+      if (meSub) meSub.textContent = "单页离线版 · 已订阅 " + loadSubs().length + " 个源";
+    } catch (err) {
+      var h = $("updatedHint");
+      if (h) h.textContent = "渲染出错：" + (err && err.message ? err.message : String(err));
+      if (window.console) console.error(err);
+    }
+  }
+
+  function applyData(data) {
+    if (!data || typeof data !== "object") return;
+    if (!data.sources) data.sources = [];
+    if (!data.morning) data.morning = [];
+    if (!data.timeline) data.timeline = [];
+    if (!data.techEvents) data.techEvents = [];
+    DATA = data;
+    try { if (!localStorage.getItem(SUBS_KEY)) saveSubs(defaultSubs()); } catch (e) {}
+    renderAll();
+  }
+
+  function navTo(name) {
+    $$(".page").forEach(function (p) {
+      var on = p.getAttribute("data-page") === name;
+      p.hidden = !on;
+      if (on) p.classList.add("active"); else p.classList.remove("active");
+    });
+    $$(".tabbar .tab").forEach(function (t) {
+      if (t.getAttribute("data-nav") === name) t.classList.add("active");
+      else t.classList.remove("active");
+    });
+  }
+
+  function broadcast() {
+    var items = (DATA && DATA.morning) || [];
+    if (!items.length || !window.speechSynthesis) return;
+    if (speaking) {
+      speechSynthesis.cancel();
+      speaking = false;
+      $("btnBroadcast").innerHTML = '<span class="play-dot"></span>一键播报';
+      return;
+    }
+    speaking = true;
+    $("btnBroadcast").innerHTML = '<span class="play-dot"></span>停止播报';
+    var text = "今日早报。";
+    for (var i = 0; i < items.length; i++) text += "第" + (i + 1) + "条，" + items[i].title + "。";
+    var u = new SpeechSynthesisUtterance(text);
+    u.lang = "zh-CN";
+    u.rate = 1.05;
+    u.onend = function () {
+      speaking = false;
+      $("btnBroadcast").innerHTML = '<span class="play-dot"></span>一键播报';
+    };
+    speechSynthesis.speak(u);
+  }
+
+  function bind() {
+    $$(".tabbar .tab").forEach(function (t) {
+      t.onclick = function () { navTo(t.getAttribute("data-nav")); };
+    });
+    if ($("btnRefresh")) $("btnRefresh").onclick = function () { renderAll(); };
+    if ($("btnBroadcast")) $("btnBroadcast").onclick = broadcast;
+    if ($("btnLayout")) $("btnLayout").onclick = function () {
+      layout = layout === "horizontal" ? "vertical" : "horizontal";
+      try { localStorage.setItem(LAYOUT_KEY, layout); } catch (e) {}
+      renderMine();
+    };
+    if ($("btnManage")) $("btnManage").onclick = function () { navTo("plaza"); };
+    if ($("btnTimelineAll")) $("btnTimelineAll").onclick = function () {
+      openSourceSheet({
+        name: "24 小时热榜",
+        items: ((DATA && DATA.timeline) || []).map(function (it) {
+          return Object.assign({}, it, { summary: minsLabel(it.minsAgo) + " · " + (it.sourceName || "") });
+        }),
+        status: "ok"
+      });
+    };
+    if ($("btnTechCal")) $("btnTechCal").onclick = function () {
+      openSourceSheet({
+        name: "科技大事",
+        items: ((DATA && DATA.techEvents) || []).map(function (it) {
+          return { title: it.title, summary: it.time + " · " + (it.place || ""), bullets: ["时间：" + it.time] };
+        }),
+        status: "ok"
+      });
+    };
+    if ($("sheetBackdrop")) $("sheetBackdrop").onclick = closeSheet;
+    if ($("sheetDismiss")) $("sheetDismiss").onclick = closeSheet;
+    if ($("sourceBackdrop")) $("sourceBackdrop").onclick = closeSourceSheet;
+    if ($("sourceSheetClose")) $("sourceSheetClose").onclick = closeSourceSheet;
+    $$(".me-row").forEach(function (btn) {
+      btn.onclick = function () {
+        var k = btn.getAttribute("data-me");
+        if (k === "subs") navTo("plaza");
+        else if (k === "about") openSheet({
+          title: "关于要知简报",
+          summary: "单页离线版，数据已内嵌。点击标题只在页内展开。",
+          bullets: ["无需加载外部 JS/CSS/JSON", "订阅状态保存在本机", "视觉参考软媒「要知」"],
+          tags: ["关于"]
+        }, { name: "要知简报" });
+        else if (k === "history") {
+          try {
+            var arr = JSON.parse(localStorage.getItem(HIST_KEY) || "[]");
+            openSourceSheet({
+              name: "阅读历史",
+              items: arr.map(function (h) { return { title: h.title, summary: h.source || "" }; }),
+              status: "ok"
+            });
+          } catch (e) { openSourceSheet({ name: "阅读历史", items: [], status: "ok" }); }
+        } else if (k === "settings" || k === "fav") {
+          openSheet({ title: k === "fav" ? "收藏" : "设置", summary: "单页内嵌版，刷新按钮会重绘当前数据。", bullets: ["无账号", "无外部请求"] }, { name: "我" });
+        }
+      };
+    });
+    if ($("btnSearch")) $("btnSearch").onclick = function () {
+      var q = prompt("搜索当前标题");
+      if (!q) return;
+      q = q.trim();
+      if (!q) return;
+      var hits = [];
+      var sources = (DATA && DATA.sources) || [];
+      for (var i = 0; i < sources.length; i++) {
+        var items = sources[i].items || [];
+        for (var j = 0; j < items.length; j++) {
+          if (items[j].title.indexOf(q) !== -1) {
+            hits.push(Object.assign({}, items[j], { sourceName: sources[i].name, sourceId: sources[i].id }));
+          }
+        }
+      }
+      openSourceSheet({ name: "搜索：" + q, items: hits.slice(0, 30), status: "ok" });
+    };
+  }
+
+  // Boot — data is already in INLINE_DATA
+  setDateHeader();
+  bind();
+  applyData(window.INLINE_DATA || window.__YAOZHI_FALLBACK__ || { sources: [], morning: [], timeline: [], techEvents: [] });
+  try {
+    var tab = new URLSearchParams(location.search).get("tab");
+    if (tab === "plaza" || tab === "me" || tab === "home") navTo(tab);
+  } catch (e) {}
+})();
+
+</script>
+</body>
+</html>
