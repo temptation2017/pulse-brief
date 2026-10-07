@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<meta name="theme-color" id="metaTheme" content="#000000" />
+<meta name="color-scheme" content="dark light" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<title>要知简报</title>
+<style>
+/*__STYLE__*/
+</style>
+<script>
+/* 主题：页面绘制前先定深浅色，避免闪一下 */
+(function () {
+  var mode = "auto";
+  try { mode = localStorage.getItem("yaozhi_theme") || "auto"; } catch (e) {}
+  var t = mode;
+  if (mode !== "light" && mode !== "dark") {
+    var h = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Shanghai", hour: "2-digit", hourCycle: "h23" }).format(new Date()));
+    t = h >= 7 && h < 19 ? "light" : "dark";
+  }
+  document.documentElement.setAttribute("data-theme", t);
+  var m = document.getElementById("metaTheme");
+  if (m) m.setAttribute("content", t === "light" ? "#f2f2f7" : "#000000");
+})();
+</script>
+
+</head>
+<body>
+<div class="app" id="app">
+    <section class="page active" id="page-home" data-page="home">
+      <header class="home-header">
+        <div class="date-block">
+          <h1 class="date-big" id="dateBig">—</h1>
+          <p class="date-sub" id="dateSub">—</p>
+        </div>
+        <div class="header-actions">
+          <button type="button" class="icon-btn" id="btnSearch" aria-label="搜索" title="搜索">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          </button>
+          <button type="button" class="icon-btn" id="btnRefresh" aria-label="刷新" title="刷新">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="scroll" id="homeScroll">
+        <article class="card morning-card">
+          <div class="card-head">
+            <h2>早报</h2>
+            <button type="button" class="pill-play" id="btnBroadcast">
+              <span class="play-dot" aria-hidden="true"></span>一键播报
+            </button>
+          </div>
+          <ol class="num-list" id="morningList"></ol>
+        </article>
+
+        <div class="section-head">
+          <h2>我的订阅</h2>
+          <div class="section-links">
+            <button type="button" class="text-link" id="btnLayout">转为竖排</button>
+            <button type="button" class="text-link" id="btnManage">订阅管理</button>
+          </div>
+        </div>
+        <div id="mineCards" class="mine-cards horizontal"></div>
+
+        <div class="agg-label">订阅聚合</div>
+        <article class="card timeline-card">
+          <div class="card-head">
+            <h2>24 小时热榜</h2>
+            <button type="button" class="pill-more" id="btnTimelineAll">查看全部 <span>›</span></button>
+          </div>
+          <ul class="timeline" id="hotTimeline"></ul>
+        </article>
+
+        <article class="card timeline-card tech-card">
+          <div class="card-head">
+            <h2>科技大事</h2>
+            <button type="button" class="pill-more" id="btnTechCal">查看日历 <span>›</span></button>
+          </div>
+          <ul class="timeline tech-timeline" id="techTimeline"></ul>
+        </article>
+
+        <p class="foot-hint" id="updatedHint">加载中…</p>
+        <div class="bottom-spacer"></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-plaza" data-page="plaza" hidden>
+      <header class="plaza-header">
+        <h1>订阅广场</h1>
+      </header>
+      <div class="chips" id="catChips" role="tablist"></div>
+      <div class="scroll plaza-scroll">
+        <ul class="plaza-list" id="plazaList"></ul>
+        <div class="bottom-spacer"></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-me" data-page="me" hidden>
+      <header class="me-header">
+        <div class="avatar">知</div>
+        <div>
+          <h1>要知读者</h1>
+          <p class="me-sub" id="meSub">本地简报 · 无需登录</p>
+        </div>
+      </header>
+      <ul class="me-menu">
+        <li class="me-theme">
+          <span>外观</span>
+          <span class="seg" id="themeSeg" role="radiogroup" aria-label="外观">
+            <button type="button" data-theme-mode="auto">自动</button>
+            <button type="button" data-theme-mode="light">浅色</button>
+            <button type="button" data-theme-mode="dark">深色</button>
+          </span>
+        </li>
+        <li><button type="button" class="me-row" data-me="subs"><span>我的订阅</span><b id="meSubCount">0</b></button></li>
+        <li><button type="button" class="me-row" data-me="history"><span>阅读历史</span><span class="chev">›</span></button></li>
+        <li><button type="button" class="me-row" data-me="fav"><span>收藏</span><span class="chev">›</span></button></li>
+        <li><button type="button" class="me-row" data-me="settings"><span>设置</span><span class="chev">›</span></button></li>
+        <li><button type="button" class="me-row" data-me="about"><span>关于</span><span class="chev">›</span></button></li>
+      </ul>
+      <p class="me-theme-tip" id="themeTip">自动：北京时间 7:00–19:00 浅色，其余时间深色</p>
+      <p class="foot-hint">正文由服务器提前抓好，点标题直接在页内读，不跳外站。</p>
+    </section>
+  </div>
+
+  <nav class="tabbar" id="tabbar">
+    <button type="button" class="tab active" data-nav="home">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 3.2 3.5 10.2V21h6.2v-6.2h4.6V21h6.2V10.2L12 3.2z"/></svg>
+      <span>首页</span>
+    </button>
+    <button type="button" class="tab" data-nav="plaza">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"/></svg>
+      <span>订阅广场</span>
+    </button>
+    <button type="button" class="tab" data-nav="me">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 12a4.2 4.2 0 1 0 0-8.4 4.2 4.2 0 0 0 0 8.4zm0 1.8c-3.6 0-8 1.8-8 5.4V21h16v-1.8c0-3.6-4.4-5.4-8-5.4z"/></svg>
+      <span>我</span>
+    </button>
+  </nav>
+
+  <div class="reader" id="sheet" hidden>
+    <header class="reader-top">
+      <button type="button" class="reader-back" id="sheetDismiss" aria-label="返回">← 返回</button>
+      <span class="reader-top-title">阅读</span>
+      <span class="reader-top-spacer"></span>
+    </header>
+    <div class="reader-scroll" id="readerScroll">
+      <div class="sheet-meta">
+        <span class="chip-src" id="sheetSource"></span>
+        <span class="chip-hot" id="sheetHot"></span>
+      </div>
+      <h2 id="sheetTitle"></h2>
+      <div class="sheet-tags" id="sheetTags"></div>
+      <div class="reader-via" id="readerVia" hidden></div>
+      <div class="reader-status" id="readerStatus" hidden></div>
+      <article class="reader-body" id="readerBody"></article>
+      <p class="reader-end" id="readerEnd" hidden></p>
+      <p class="reader-ext" id="sheetLinkWrap" hidden>
+        <a class="reader-ext-link" id="sheetLink" href="#" target="_blank" rel="noopener noreferrer">在浏览器打开原文</a>
+      </p>
+    </div>
+  </div>
+
+  <div class="sheet" id="sourceSheet" hidden>
+    <div class="sheet-backdrop" id="sourceBackdrop"></div>
+    <div class="sheet-panel tall" role="dialog" aria-modal="true">
+      <div class="sheet-grab"></div>
+      <div class="card-head sticky">
+        <h2 id="sourceSheetTitle">全部</h2>
+        <button type="button" class="pill-more" id="sourceSheetClose">关闭</button>
+      </div>
+      <ol class="num-list" id="sourceSheetList"></ol>
+    </div>
+  </div>
+<script>
+/*__DATA__*/
+</script>
+<script>
+/*__APP__*/
+</script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+node_modules/
+.herenow/
+preview-*.png
+*.log

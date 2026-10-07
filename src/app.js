@@ -1,0 +1,805 @@
+(function () {
+  "use strict";
+  var SUBS_KEY = "yaozhi_subs_v3";
+  var LAYOUT_KEY = "yaozhi_layout_v4";
+  var HIST_KEY = "yaozhi_hist_v3";
+  var THEME_KEY = "yaozhi_theme";
+  // 正文：cid -> { k, p, via, cut }。内嵌一部分，其余同源加载 content.json
+  var CONTENT = window.INLINE_CONTENT || {};
+  var contentState = "idle"; // idle | loading | done | fail
+  var contentWaiters = [];
+  var CATS = ["全部", "综合", "科技", "娱乐", "财经", "汽车"];
+  var DATA = null;
+  var activeCat = "全部";
+  var layout = "horizontal";
+  var speaking = false;
+
+  try { layout = localStorage.getItem(LAYOUT_KEY) || "horizontal"; } catch (e) {}
+
+  function $(id) { return document.getElementById(id); }
+  function $$(sel, root) {
+    return Array.prototype.slice.call((root || document).querySelectorAll(sel));
+  }
+  function escapeHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function defaultSubs() {
+    var list = (DATA && DATA.sources) || [];
+    var out = [];
+    for (var i = 0; i < list.length; i++) if (list[i].defaultOn) out.push(list[i].id);
+    return out.length ? out : ["weibo_hot", "zhihu_hot", "toutiao_hot", "ithome_daily", "baidu_hot"];
+  }
+  function loadSubs() {
+    try {
+      var raw = localStorage.getItem(SUBS_KEY);
+      if (!raw) return defaultSubs();
+      var arr = JSON.parse(raw);
+      if (!arr || !arr.length) return defaultSubs();
+      var known = {};
+      var sources = (DATA && DATA.sources) || [];
+      for (var i = 0; i < sources.length; i++) known[sources[i].id] = 1;
+      var filtered = [];
+      for (var j = 0; j < arr.length; j++) if (!sources.length || known[arr[j]]) filtered.push(arr[j]);
+      return filtered.length ? filtered : defaultSubs();
+    } catch (e) { return defaultSubs(); }
+  }
+  function saveSubs(subs) {
+    try { localStorage.setItem(SUBS_KEY, JSON.stringify(subs)); } catch (e) {}
+  }
+  function sourceById(id) {
+    var sources = (DATA && DATA.sources) || [];
+    for (var i = 0; i < sources.length; i++) if (sources[i].id === id) return sources[i];
+    return null;
+  }
+  function minsLabel(m) {
+    if (m == null) return "刚刚";
+    if (m < 1) return "刚刚";
+    if (m < 60) return m + "分钟前";
+    if (m < 1440) return Math.floor(m / 60) + "小时前";
+    return Math.floor(m / 1440) + "天前";
+  }
+  function pushHistory(item) {
+    try {
+      var arr = JSON.parse(localStorage.getItem(HIST_KEY) || "[]");
+      arr.unshift({ title: item.title, at: Date.now(), source: item.sourceName || "" });
+      localStorage.setItem(HIST_KEY, JSON.stringify(arr.slice(0, 50)));
+    } catch (e) {}
+  }
+
+  function setDateHeader() {
+    var elBig = $("dateBig"), elSub = $("dateSub");
+    if (!elBig || !elSub) return;
+    var now = new Date();
+    elBig.textContent = now.toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai", month: "long", day: "numeric" });
+    var week = now.toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai", weekday: "long" });
+    var lunar = "";
+    try {
+      lunar = "农历" + new Intl.DateTimeFormat("zh-CN-u-ca-chinese", {
+        timeZone: "Asia/Shanghai", month: "long", day: "numeric"
+      }).format(now).replace(/\s/g, "");
+    } catch (e) {}
+    elSub.textContent = lunar ? week + " " + lunar : week;
+  }
+
+  var readerFetchToken = 0;
+  var readerOpen = false;
+  var readerPopIgnore = false;
+
+  function setReaderStatus(text, warn) {
+    var el = $("readerStatus");
+    if (!el) return;
+    if (!text) { el.hidden = true; el.textContent = ""; el.className = "reader-status"; return; }
+    el.hidden = false;
+    el.textContent = text;
+    el.className = warn ? "reader-status warn" : "reader-status";
+  }
+
+  function clearReaderBody() {
+    var body = $("readerBody");
+    if (body) while (body.firstChild) body.removeChild(body.firstChild);
+  }
+
+  function appendParagraph(parent, text) {
+    var t = String(text || "").trim();
+    if (!t) return;
+    var p = document.createElement("p");
+    p.textContent = t;
+    parent.appendChild(p);
+  }
+
+  function setVia(html) {
+    var el = $("readerVia");
+    if (!el) return;
+    if (!html) { el.hidden = true; el.innerHTML = ""; return; }
+    el.hidden = false;
+    el.innerHTML = html;
+  }
+  function setEnd(text) {
+    var el = $("readerEnd");
+    if (!el) return;
+    el.hidden = !text;
+    el.textContent = text || "";
+  }
+  function setLink(url, label) {
+    var a = $("sheetLink");
+    var wrap = $("sheetLinkWrap");
+    if (!a) return;
+    if (url) {
+      if (wrap) wrap.hidden = false;
+      a.hidden = false;
+      a.href = url;
+      a.textContent = label || "在浏览器打开原文";
+    } else {
+      if (wrap) wrap.hidden = true;
+      a.hidden = true;
+      a.removeAttribute("href");
+    }
+  }
+
+  function renderSkeleton() {
+    var body = $("readerBody");
+    clearReaderBody();
+    var box = document.createElement("div");
+    box.className = "reader-loading";
+    for (var i = 0; i < 6; i++) box.appendChild(document.createElement("p"));
+    body.appendChild(box);
+  }
+
+  /** 用预抓好的正文渲染 */
+  function renderContent(item, c) {
+    var body = $("readerBody");
+    clearReaderBody();
+    (c.p || []).forEach(function (line) { appendParagraph(body, line); });
+    if (c.k === "related" && c.via) {
+      setVia("<b>相关报道 · " + escapeHtml(c.via.name || "其他媒体") + "</b>" +
+        (c.via.title ? '<span class="via-title">' + escapeHtml(c.via.title) + "</span>" : ""));
+      setLink(c.via.url || item.url, "在浏览器打开这篇报道");
+    } else if (c.k === "intro") {
+      setVia("<b>" + (/douban/.test(item.url || "") ? "影片简介" : "简介") + "</b>");
+      setLink(item.url, "在浏览器打开原页面");
+    } else {
+      setVia("");
+      setLink(item.url, "在浏览器打开原文");
+    }
+    setEnd(c.cut ? "全文较长，这里节选了前面的部分" : "");
+    setReaderStatus("", false);
+  }
+
+  /** 没有正文时：摘要 + 热度，口气平和一点 */
+  function renderFallbackBody(item, note) {
+    var body = $("readerBody");
+    clearReaderBody();
+    setVia("");
+    setEnd("");
+    var summary = item.summary && item.summary !== item.title ? item.summary : "";
+    if (summary && !/^当前热度/.test(summary)) appendParagraph(body, summary);
+    var bullets = (item.bullets || []).filter(function (b) {
+      return b && !/来自公开热榜聚合/.test(b) && b !== summary;
+    });
+    if (item.hot && !bullets.length) bullets.push("当前热度 " + item.hot);
+    if (bullets.length) {
+      var ul = document.createElement("ul");
+      ul.className = "bullet-block";
+      bullets.forEach(function (b) {
+        var li = document.createElement("li");
+        li.textContent = String(b || "");
+        ul.appendChild(li);
+      });
+      body.appendChild(ul);
+    }
+    if (note) {
+      var p = document.createElement("p");
+      p.className = "hint";
+      p.textContent = note;
+      body.appendChild(p);
+    }
+    if (!body.firstChild) appendParagraph(body, item.title || "");
+    setLink(item.url, "在浏览器打开原文");
+  }
+
+  function isHardToScrape(url) {
+    return /zhihu\.com|weibo\.(com|cn)|weixin\.qq\.com|xiaohongshu\.com|xhslink\.com|douyin\.com|toutiao\.com|baidu\.com\/s|tieba\.baidu|bilibili\.com|okjike|tiktok\.com|twitter\.com|\/\/x\.com\//i.test(String(url || ""));
+  }
+
+  function stripJinaShell(raw) {
+    var text = String(raw || "").replace(/\r/g, "");
+    text = text.replace(/^(Title|URL Source|Published Time|Warning):\s*.*$/gim, "");
+    text = text.replace(/^Markdown Content:\s*/gim, "");
+    text = text.replace(/!\[[^\]]*\]\([^)]+\)/g, "");
+    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1");
+    return text.trim();
+  }
+
+  function isBadFetchContent(raw) {
+    var rawStr = String(raw || "").trim();
+    if (!rawStr) return true;
+    var badPatterns = [
+      /captcha/i,
+      /authorized to access/i,
+      /please make sure you are authorized/i,
+      /请您登录/,
+      /登录后查看/,
+      /更多专业优质内容/,
+      /请先登录/,
+      /该内容需登录/,
+      /验证码/,
+      /访问异常/,
+      /\b403\b.*forbidden/i,
+      /403 forbidden/i,
+      /just a moment/i,
+      /cloudflare/i,
+      /cf-browser-verification/i,
+      /access denied/i,
+      /sign in to continue/i,
+      /enable javascript and cookies/i
+    ];
+    for (var i = 0; i < badPatterns.length; i++) {
+      if (badPatterns[i].test(rawStr)) return true;
+    }
+    if (/^Warning:\s*/im.test(rawStr)) return true;
+    if (/Title:\s*https?:\/\//i.test(rawStr) && /Warning:/i.test(rawStr)) return true;
+    if (/URL Source:\s*https?:\/\//i.test(rawStr) && /请您登录|登录后查看|CAPTCHA|captcha/i.test(rawStr)) return true;
+
+    var cleaned = stripJinaShell(rawStr);
+    var plain = cleaned.replace(/\s+/g, "");
+    if (plain.length < 80) return true;
+
+    var lines = cleaned.split(/\n+/).map(function (l) { return l.trim(); }).filter(Boolean);
+    if (lines.length) {
+      var urlish = lines.filter(function (l) {
+        return /^https?:\/\//i.test(l) || /^(Title|URL Source):/i.test(l);
+      });
+      if (urlish.length / lines.length > 0.5 && plain.length < 400) return true;
+    }
+    // leftover login/captcha crumbs after strip
+    if (/登录|验证码|captcha|warning/i.test(cleaned) && plain.length < 220) return true;
+    return false;
+  }
+
+  function renderFetchedText(raw) {
+    var body = $("readerBody");
+    clearReaderBody();
+    var text = stripJinaShell(raw);
+    var parts = text.split(/\n{2,}/);
+    var count = 0;
+    parts.forEach(function (block) {
+      var line = block.replace(/\n+/g, " ").replace(/^#+\s*/, "").replace(/\*\*/g, "").trim();
+      if (!line || line.length < 2) return;
+      // skip leftover meta lines
+      if (/^(Title|URL Source|Warning|Markdown Content):/i.test(line)) return;
+      appendParagraph(body, line);
+      count++;
+    });
+    if (!count) {
+      var fallback = text.replace(/\n+/g, " ").trim().slice(0, 4000);
+      if (fallback) appendParagraph(body, fallback);
+      else appendParagraph(body, "暂无正文");
+    }
+  }
+
+  /** 兜底：文章型链接在浏览器里再试一次 r.jina.ai */
+  function fetchFullText(url, token, item) {
+    setReaderStatus("正在获取原文…", false);
+    renderSkeleton();
+    var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var timer = setTimeout(function () { try { if (ctrl) ctrl.abort(); } catch (e) {} }, 10000);
+    fetch("https://r.jina.ai/" + url, {
+      signal: ctrl ? ctrl.signal : undefined,
+      headers: { "Accept": "text/plain,*/*" }
+    }).then(function (res) {
+      clearTimeout(timer);
+      if (!res.ok) throw new Error("http " + res.status);
+      return res.text();
+    }).then(function (txt) {
+      if (token !== readerFetchToken) return;
+      if (isBadFetchContent(txt)) throw new Error("bad content");
+      setReaderStatus("", false);
+      renderFetchedText(txt);
+      setLink(url, "在浏览器打开原文");
+    }).catch(function () {
+      clearTimeout(timer);
+      if (token !== readerFetchToken) return;
+      setReaderStatus("", false);
+      renderFallbackBody(item, "这篇的正文还没准备好，先看要点，原文链接在下方。");
+    });
+  }
+
+  function whenContentReady(cb) {
+    if (contentState === "done" || contentState === "fail") return cb();
+    contentWaiters.push(cb);
+    loadContent();
+  }
+
+  function showBody(item, token) {
+    var c = item.cid && CONTENT[item.cid];
+    if (c && c.p && c.p.length) { renderContent(item, c); return; }
+    // 列表说有正文，但 content.json 还没到：等一下
+    if (item.cid && item.ck && contentState !== "done" && contentState !== "fail") {
+      setReaderStatus("正在载入正文…", false);
+      renderSkeleton();
+      whenContentReady(function () {
+        if (token !== readerFetchToken) return;
+        var c2 = CONTENT[item.cid];
+        if (c2 && c2.p && c2.p.length) renderContent(item, c2);
+        else fallback(item, token);
+      });
+      return;
+    }
+    fallback(item, token);
+  }
+
+  function fallback(item, token) {
+    setReaderStatus("", false);
+    if (item.url && !isHardToScrape(item.url)) {
+      fetchFullText(item.url, token, item);
+      return;
+    }
+    var note = "";
+    if (item.url) note = isHardToScrape(item.url) && /weibo|baidu|toutiao|douyin|tieba/.test(item.url)
+      ? "这是一条热搜话题，暂时还没有找到成篇的报道，下次刷新会再找。"
+      : "这条暂时没有可读的正文，原链接在下方。";
+    renderFallbackBody(item, note);
+  }
+
+  function openSheet(item, source) {
+    pushHistory({ title: item.title, sourceName: (source && source.name) || item.sourceName || "" });
+    readerFetchToken++;
+    var token = readerFetchToken;
+    $("sheetSource").textContent = (source && source.name) || item.sourceName || "资讯";
+    $("sheetHot").textContent = item.hot ? ("热度 " + item.hot) : "";
+    $("sheetTitle").textContent = item.title;
+    var tags = item.tags || [(source && source.cat), (source && source.name)].filter(Boolean);
+    $("sheetTags").innerHTML = tags.filter(Boolean).slice(0, 4).map(function (t) {
+      return "<span>" + escapeHtml(t) + "</span>";
+    }).join("");
+    setReaderStatus("", false);
+    showBody(item, token);
+    $("sheet").hidden = false;
+    document.body.style.overflow = "hidden";
+    var scroll = $("readerScroll");
+    if (scroll) scroll.scrollTop = 0;
+    if (!readerOpen) {
+      readerOpen = true;
+      try {
+        history.pushState({ yaozhiReader: 1 }, "", location.href);
+      } catch (e) {}
+    }
+  }
+
+  function closeSheet() {
+    readerFetchToken++;
+    if ($("sheet")) $("sheet").hidden = true;
+    document.body.style.overflow = "";
+    setReaderStatus("", false);
+    if (readerOpen) {
+      readerOpen = false;
+      if (!readerPopIgnore) {
+        try {
+          if (history.state && history.state.yaozhiReader) history.back();
+        } catch (e) {}
+      }
+    }
+    readerPopIgnore = false;
+  }
+
+  function closeSourceSheet() { $("sourceSheet").hidden = true; document.body.style.overflow = ""; }
+
+  function itemRow(it, i, withSummary) {
+    var nClass = i < 3 ? "n top" : "n";
+    var sub = "";
+    if (withSummary && it.summary) {
+      sub = '<span class="sub">' + escapeHtml(it.summary.slice(0, 72)) + (it.summary.length > 72 ? "…" : "") + "</span>";
+    }
+    return '<li data-i="' + i + '" role="button" tabindex="0"><span class="' + nClass + '">' + (i + 1) +
+      '</span><span class="t">' + escapeHtml(it.title) + sub + "</span></li>";
+  }
+  function bindItemClicks(root, src) {
+    $$("li[data-i]", root).forEach(function (li) {
+      li.onclick = function (e) {
+        e.preventDefault();
+        var it = src.items[Number(li.getAttribute("data-i"))];
+        if (it) openSheet(it, src);
+      };
+    });
+  }
+
+  function openSourceSheet(src) {
+    $("sourceSheetTitle").textContent = src.name;
+    var list = $("sourceSheetList");
+    if (!src.items || !src.items.length) {
+      list.innerHTML = '<li class="empty">暂无条目</li>';
+    } else {
+      list.innerHTML = src.items.map(function (it, i) { return itemRow(it, i, true); }).join("");
+      bindItemClicks(list, src);
+    }
+    $("sourceSheet").hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+
+  function renderMorning() {
+    var list = $("morningList");
+    if (!list) return;
+    var items = (DATA && DATA.morning) || [];
+    if (!items.length) { list.innerHTML = '<li class="empty">暂无早报</li>'; return; }
+    list.innerHTML = items.map(function (it, i) {
+      var nClass = i < 3 ? "n top" : "n";
+      return '<li data-mi="' + i + '" role="button"><span class="' + nClass + '">' + (i + 1) +
+        '</span><span class="t">' + escapeHtml(it.title) + "</span></li>";
+    }).join("");
+    $$("li[data-mi]", list).forEach(function (li) {
+      li.onclick = function (e) {
+        e.preventDefault();
+        var it = items[Number(li.getAttribute("data-mi"))];
+        if (it) openSheet(it, sourceById(it.sourceId) || { name: it.sourceName });
+      };
+    });
+  }
+
+  function renderMine() {
+    var wrap = $("mineCards");
+    if (!wrap) return;
+    var subs = loadSubs();
+    wrap.className = "mine-cards " + (layout === "horizontal" ? "horizontal" : "vertical");
+    var btnLayout = $("btnLayout");
+    if (btnLayout) btnLayout.textContent = layout === "horizontal" ? "转为竖排" : "转为横排";
+    var cards = [];
+    for (var s = 0; s < subs.length; s++) {
+      var src = sourceById(subs[s]);
+      if (!src) continue;
+      var items = (src.items || []).slice(0, 10);
+      var body = items.length
+        ? '<ol class="num-list">' + items.map(function (it, i) { return itemRow(it, i, false); }).join("") + "</ol>"
+        : '<p class="empty">' + (src.status === "unavailable" ? "暂不可用" : "暂无更新") + "</p>";
+      cards.push(
+        '<article class="card src-card" data-src="' + src.id + '"><div class="src-head">' +
+        '<div class="src-icon" style="background:' + (src.color || "#444") + '">' + escapeHtml(src.icon || src.name.slice(0, 1)) + "</div>" +
+        '<div class="src-name">' + escapeHtml(src.name) + "</div>" +
+        '<button type="button" class="pill-more btn-all" data-all="' + src.id + '">查看全部 <span>›</span></button></div>' +
+        body + "</article>"
+      );
+    }
+    wrap.innerHTML = cards.length ? cards.join("") : '<p class="empty">还没有订阅。去「订阅广场」挑几个吧。</p>';
+    $$(".btn-all", wrap).forEach(function (btn) {
+      btn.onclick = function (e) {
+        e.stopPropagation();
+        var src = sourceById(btn.getAttribute("data-all"));
+        if (src) openSourceSheet(src);
+      };
+    });
+    $$(".src-card", wrap).forEach(function (card) {
+      var src = sourceById(card.getAttribute("data-src"));
+      if (src) bindItemClicks(card, src);
+    });
+    var c = $("meSubCount");
+    if (c) c.textContent = String(subs.length);
+  }
+
+  function renderTimeline() {
+    var ul = $("hotTimeline");
+    if (!ul) return;
+    var items = ((DATA && DATA.timeline) || []).slice(0, 20);
+    if (!items.length) { ul.innerHTML = '<li class="empty">暂无热榜</li>'; return; }
+    ul.innerHTML = items.map(function (it, i) {
+      return '<li data-ti="' + i + '"><div class="tl-meta">' + minsLabel(it.minsAgo) + " · " +
+        escapeHtml(it.sourceName || "") + '</div><div class="tl-title">' + escapeHtml(it.title) + "</div></li>";
+    }).join("");
+    $$("li[data-ti]", ul).forEach(function (li) {
+      li.onclick = function (e) {
+        e.preventDefault();
+        var it = items[Number(li.getAttribute("data-ti"))];
+        if (it) openSheet(it, sourceById(it.sourceId) || { name: it.sourceName });
+      };
+    });
+  }
+
+  function renderTech() {
+    var ul = $("techTimeline");
+    if (!ul) return;
+    var items = (DATA && DATA.techEvents) || [];
+    ul.innerHTML = items.map(function (it) {
+      return '<li><div class="tl-meta">' + escapeHtml(it.time) + " · " + escapeHtml(it.place || "") +
+        '</div><div class="tl-title">' + escapeHtml(it.title) + "</div></li>";
+    }).join("");
+  }
+
+  function renderChips() {
+    var box = $("catChips");
+    if (!box) return;
+    box.innerHTML = CATS.map(function (c) {
+      return '<button type="button" class="chip' + (c === activeCat ? " active" : "") + '" data-cat="' + c + '">' + c + "</button>";
+    }).join("");
+    $$(".chip", box).forEach(function (btn) {
+      btn.onclick = function () {
+        activeCat = btn.getAttribute("data-cat");
+        renderChips();
+        renderPlaza();
+      };
+    });
+  }
+
+  function renderPlaza() {
+    var list = $("plazaList");
+    if (!list) return;
+    var subs = {};
+    loadSubs().forEach(function (id) { subs[id] = 1; });
+    var rows = (DATA && DATA.sources) || [];
+    if (activeCat !== "全部") rows = rows.filter(function (s) { return s.cat === activeCat; });
+    if (!rows.length) { list.innerHTML = '<li class="empty">该分类暂无信源</li>'; return; }
+    list.innerHTML = rows.map(function (s) {
+      var on = !!subs[s.id];
+      var unavailable = s.status === "unavailable" || !s.live;
+      var meta = unavailable ? "暂不可用" : ("今日" + (s.todayCount || (s.items && s.items.length) || 0) + "条");
+      return '<li class="plaza-row"><div class="plaza-icon" style="background:' + (s.color || "#444") + '">' +
+        escapeHtml(s.icon || s.name.slice(0, 1)) + '</div><div class="plaza-info"><div class="name">' +
+        escapeHtml(s.name) + '</div><div class="meta">' + meta + '</div></div>' +
+        '<button type="button" class="btn-sub' + (on ? " on" : "") + '" data-toggle="' + s.id + '">' +
+        (on ? "已订阅" : (unavailable ? "暂不可用" : "订阅")) + "</button></li>";
+    }).join("");
+    $$("[data-toggle]", list).forEach(function (btn) {
+      btn.onclick = function () {
+        var id = btn.getAttribute("data-toggle");
+        var arr = loadSubs();
+        var idx = arr.indexOf(id);
+        if (idx >= 0) arr.splice(idx, 1); else arr.push(id);
+        saveSubs(arr);
+        renderPlaza();
+        renderMine();
+      };
+    });
+  }
+
+  function renderAll() {
+    try {
+      setDateHeader();
+      renderMorning();
+      renderMine();
+      renderTimeline();
+      renderTech();
+      renderChips();
+      renderPlaza();
+      var hint = $("updatedHint");
+      if (hint) {
+        hint.textContent = (DATA && DATA.updatedAtLabel)
+          ? ("数据更新于 " + DATA.updatedAtLabel + "（北京时间）· 点标题页内阅读")
+          : "已加载";
+      }
+      var meSub = $("meSub");
+      if (meSub) meSub.textContent = "已订阅 " + loadSubs().length + " 个源";
+    } catch (err) {
+      var h = $("updatedHint");
+      if (h) h.textContent = "渲染出错：" + (err && err.message ? err.message : String(err));
+      if (window.console) console.error(err);
+    }
+  }
+
+  function applyData(data) {
+    if (!data || typeof data !== "object") return;
+    if (DATA && DATA.updatedAt && data.updatedAt && data.updatedAt < DATA.updatedAt) return;
+    if (!data.sources) data.sources = [];
+    if (!data.morning) data.morning = [];
+    if (!data.timeline) data.timeline = [];
+    if (!data.techEvents) data.techEvents = [];
+    DATA = data;
+    try { if (!localStorage.getItem(SUBS_KEY)) saveSubs(defaultSubs()); } catch (e) {}
+    renderAll();
+  }
+
+  function navTo(name) {
+    $$(".page").forEach(function (p) {
+      var on = p.getAttribute("data-page") === name;
+      p.hidden = !on;
+      if (on) p.classList.add("active"); else p.classList.remove("active");
+    });
+    $$(".tabbar .tab").forEach(function (t) {
+      if (t.getAttribute("data-nav") === name) t.classList.add("active");
+      else t.classList.remove("active");
+    });
+  }
+
+  function broadcast() {
+    var items = (DATA && DATA.morning) || [];
+    if (!items.length || !window.speechSynthesis) return;
+    if (speaking) {
+      speechSynthesis.cancel();
+      speaking = false;
+      $("btnBroadcast").innerHTML = '<span class="play-dot"></span>一键播报';
+      return;
+    }
+    speaking = true;
+    $("btnBroadcast").innerHTML = '<span class="play-dot"></span>停止播报';
+    var text = "今日早报。";
+    for (var i = 0; i < items.length; i++) text += "第" + (i + 1) + "条，" + items[i].title + "。";
+    var u = new SpeechSynthesisUtterance(text);
+    u.lang = "zh-CN";
+    u.rate = 1.05;
+    u.onend = function () {
+      speaking = false;
+      $("btnBroadcast").innerHTML = '<span class="play-dot"></span>一键播报';
+    };
+    speechSynthesis.speak(u);
+  }
+
+  function bind() {
+    $$(".tabbar .tab").forEach(function (t) {
+      t.onclick = function () { navTo(t.getAttribute("data-nav")); };
+    });
+    if ($("btnRefresh")) $("btnRefresh").onclick = function () { loadData(true); };
+    if ($("btnBroadcast")) $("btnBroadcast").onclick = broadcast;
+    if ($("btnLayout")) $("btnLayout").onclick = function () {
+      layout = layout === "horizontal" ? "vertical" : "horizontal";
+      try { localStorage.setItem(LAYOUT_KEY, layout); } catch (e) {}
+      renderMine();
+    };
+    if ($("btnManage")) $("btnManage").onclick = function () { navTo("plaza"); };
+    if ($("btnTimelineAll")) $("btnTimelineAll").onclick = function () {
+      openSourceSheet({
+        name: "24 小时热榜",
+        items: ((DATA && DATA.timeline) || []).map(function (it) {
+          return Object.assign({}, it, { summary: minsLabel(it.minsAgo) + " · " + (it.sourceName || "") });
+        }),
+        status: "ok"
+      });
+    };
+    if ($("btnTechCal")) $("btnTechCal").onclick = function () {
+      openSourceSheet({
+        name: "科技大事",
+        items: ((DATA && DATA.techEvents) || []).map(function (it) {
+          return { title: it.title, summary: it.time + " · " + (it.place || ""), bullets: ["时间：" + it.time] };
+        }),
+        status: "ok"
+      });
+    };
+    if ($("sheetDismiss")) $("sheetDismiss").onclick = closeSheet;
+    if ($("sheetLink")) $("sheetLink").onclick = function (e) { e.stopPropagation(); };
+    window.addEventListener("popstate", function () {
+      if (readerOpen && $("sheet") && !$("sheet").hidden) {
+        readerPopIgnore = true;
+        closeSheet();
+      }
+    });
+    if ($("sourceBackdrop")) $("sourceBackdrop").onclick = closeSourceSheet;
+    if ($("sourceSheetClose")) $("sourceSheetClose").onclick = closeSourceSheet;
+    $$(".me-row").forEach(function (btn) {
+      btn.onclick = function () {
+        var k = btn.getAttribute("data-me");
+        if (k === "subs") navTo("plaza");
+        else if (k === "about") openSheet({
+          title: "关于要知简报",
+          summary: "公开热榜摘要页，视觉参考软媒「要知」。正文由 GitHub Actions 每小时在服务器端预先抓好，点标题直接在页内读。",
+          bullets: ["文章类来源直接抓原文；热搜词配一篇相关报道，并标明出处", "订阅、外观设置只存在本机", "没有账号，不收集任何数据"],
+          tags: ["关于"]
+        }, { name: "要知简报" });
+        else if (k === "history") {
+          try {
+            var arr = JSON.parse(localStorage.getItem(HIST_KEY) || "[]");
+            openSourceSheet({
+              name: "阅读历史",
+              items: arr.map(function (h) { return { title: h.title, summary: h.source || "" }; }),
+              status: "ok"
+            });
+          } catch (e) { openSourceSheet({ name: "阅读历史", items: [], status: "ok" }); }
+        } else if (k === "settings" || k === "fav") {
+          openSheet({ title: k === "fav" ? "收藏" : "设置", summary: k === "fav" ? "收藏功能还没做，先用阅读历史。" : "右上角刷新会拉取服务器上最新一次的数据。", bullets: k === "fav" ? [] : ["外观可在本页上方切换：自动 / 浅色 / 深色", "数据大约每小时更新一次"] }, { name: "我" });
+        }
+      };
+    });
+    if ($("btnSearch")) $("btnSearch").onclick = function () {
+      var q = prompt("搜索当前标题");
+      if (!q) return;
+      q = q.trim();
+      if (!q) return;
+      var hits = [];
+      var sources = (DATA && DATA.sources) || [];
+      for (var i = 0; i < sources.length; i++) {
+        var items = sources[i].items || [];
+        for (var j = 0; j < items.length; j++) {
+          if (items[j].title.indexOf(q) !== -1) {
+            hits.push(Object.assign({}, items[j], { sourceName: sources[i].name, sourceId: sources[i].id }));
+          }
+        }
+      }
+      openSourceSheet({ name: "搜索：" + q, items: hits.slice(0, 30), status: "ok" });
+    };
+  }
+
+  /* ---------- 同源加载最新数据和正文 ---------- */
+  function getJson(name, ver) {
+    var url = name + "?v=" + encodeURIComponent(ver || Date.now());
+    return fetch(url, { cache: ver ? "default" : "no-store" }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+  }
+
+  function loadContent(force) {
+    if (contentState === "loading") return;
+    if (contentState === "done" && !force) return;
+    contentState = "loading";
+    getJson("content.json", force ? "" : (DATA && DATA.updatedAt)).then(function (j) {
+      var items = (j && j.items) || {};
+      for (var k in items) if (Object.prototype.hasOwnProperty.call(items, k)) CONTENT[k] = items[k];
+      contentState = "done";
+    }).catch(function () {
+      contentState = "fail";
+    }).then(function () {
+      var ws = contentWaiters;
+      contentWaiters = [];
+      ws.forEach(function (cb) { try { cb(); } catch (e) {} });
+    });
+  }
+
+  function loadData(manual) {
+    var btn = $("btnRefresh");
+    if (btn) btn.classList.add("busy");
+    getJson("data.json").then(function (d) {
+      var newer = !DATA || !DATA.updatedAt || (d.updatedAt && d.updatedAt > DATA.updatedAt);
+      if (newer) {
+        applyData(d);
+        loadContent(true);
+      } else if (manual) {
+        renderAll();
+      }
+    }).catch(function () {
+      if (manual) renderAll();
+    }).then(function () {
+      if (btn) btn.classList.remove("busy");
+    });
+  }
+
+  /* ---------- 深浅色 ---------- */
+  function themeMode() {
+    try { return localStorage.getItem(THEME_KEY) || "auto"; } catch (e) { return "auto"; }
+  }
+  function bjHour() {
+    try {
+      return Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Shanghai", hour: "2-digit", hourCycle: "h23" }).format(new Date()));
+    } catch (e) {
+      return (new Date().getUTCHours() + 8) % 24;
+    }
+  }
+  function applyTheme() {
+    var mode = themeMode();
+    var t = mode === "light" || mode === "dark" ? mode : (bjHour() >= 7 && bjHour() < 19 ? "light" : "dark");
+    var root = document.documentElement;
+    if (root.getAttribute("data-theme") !== t) root.setAttribute("data-theme", t);
+    var meta = $("metaTheme");
+    if (meta) meta.setAttribute("content", t === "light" ? "#f2f2f7" : "#000000");
+    $$("#themeSeg button").forEach(function (b) {
+      var on = b.getAttribute("data-theme-mode") === mode;
+      b.className = on ? "on" : "";
+      b.setAttribute("aria-checked", on ? "true" : "false");
+    });
+  }
+  function bindTheme() {
+    $$("#themeSeg button").forEach(function (b) {
+      b.onclick = function () {
+        try { localStorage.setItem(THEME_KEY, b.getAttribute("data-theme-mode")); } catch (e) {}
+        applyTheme();
+      };
+    });
+    applyTheme();
+    setInterval(applyTheme, 60000);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) applyTheme(); });
+  }
+
+  // 启动：先用内嵌数据，随后同源拉最新 data.json / content.json
+  setDateHeader();
+  bind();
+  bindTheme();
+  applyData(window.INLINE_DATA || window.__YAOZHI_FALLBACK__ || { sources: [], morning: [], timeline: [], techEvents: [] });
+  try {
+    var tab = new URLSearchParams(location.search).get("tab");
+    if (tab === "plaza" || tab === "me" || tab === "home") navTo(tab);
+  } catch (e) {}
+  if (location.protocol !== "file:") {
+    loadContent();
+    loadData(false);
+  } else {
+    contentState = "fail";
+  }
+})();
