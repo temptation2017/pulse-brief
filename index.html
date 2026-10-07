@@ -987,39 +987,102 @@ window.INLINE_DATA = {"updatedAt":"2026-10-07T15:56:57.039Z","updatedAtLabel":"2
     if (!body.firstChild) appendParagraph(body, item.title || "暂无正文");
   }
 
+
+  function isHardToScrape(url) {
+    try {
+      var u = String(url || "").toLowerCase();
+      return /zhihu\.com|zhuanlan\.zhihu|weibo\.(com|cn)|weixin\.qq\.com|mp\.weixin\.qq\.com|xiaohongshu\.com|xhslink\.com|douyin\.com|iesdouyin\.com|tiktok\.com|instagram\.com|facebook\.com|twitter\.com|\/\/x\.com\//.test(u);
+    } catch (e) { return false; }
+  }
+
+  function stripJinaShell(raw) {
+    var text = String(raw || "").replace(/\r/g, "");
+    text = text.replace(/^(Title|URL Source|Published Time|Warning):\s*.*$/gim, "");
+    text = text.replace(/^Markdown Content:\s*/gim, "");
+    text = text.replace(/!\[[^\]]*\]\([^)]+\)/g, "");
+    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1");
+    return text.trim();
+  }
+
+  function isBadFetchContent(raw) {
+    var rawStr = String(raw || "").trim();
+    if (!rawStr) return true;
+    var badPatterns = [
+      /captcha/i,
+      /authorized to access/i,
+      /please make sure you are authorized/i,
+      /请您登录/,
+      /登录后查看/,
+      /更多专业优质内容/,
+      /请先登录/,
+      /该内容需登录/,
+      /验证码/,
+      /访问异常/,
+      /\b403\b.*forbidden/i,
+      /403 forbidden/i,
+      /just a moment/i,
+      /cloudflare/i,
+      /cf-browser-verification/i,
+      /access denied/i,
+      /sign in to continue/i,
+      /enable javascript and cookies/i
+    ];
+    for (var i = 0; i < badPatterns.length; i++) {
+      if (badPatterns[i].test(rawStr)) return true;
+    }
+    if (/^Warning:\s*/im.test(rawStr)) return true;
+    if (/Title:\s*https?:\/\//i.test(rawStr) && /Warning:/i.test(rawStr)) return true;
+    if (/URL Source:\s*https?:\/\//i.test(rawStr) && /请您登录|登录后查看|CAPTCHA|captcha/i.test(rawStr)) return true;
+
+    var cleaned = stripJinaShell(rawStr);
+    var plain = cleaned.replace(/\s+/g, "");
+    if (plain.length < 80) return true;
+
+    var lines = cleaned.split(/\n+/).map(function (l) { return l.trim(); }).filter(Boolean);
+    if (lines.length) {
+      var urlish = lines.filter(function (l) {
+        return /^https?:\/\//i.test(l) || /^(Title|URL Source):/i.test(l);
+      });
+      if (urlish.length / lines.length > 0.5 && plain.length < 400) return true;
+    }
+    // leftover login/captcha crumbs after strip
+    if (/登录|验证码|captcha|warning/i.test(cleaned) && plain.length < 220) return true;
+    return false;
+  }
+
   function renderFetchedText(raw) {
     var body = $("readerBody");
     clearReaderBody();
-    var text = String(raw || "");
-    // Strip common jina header lines
-    text = text.replace(/^Title:.*\n/i, "");
-    text = text.replace(/^URL Source:.*\n/i, "");
-    text = text.replace(/^Markdown Content:\s*/i, "");
-    text = text.replace(/^Warning:.*\n/gi, "");
-    // Drop image markdown / bare URLs-heavy noise lightly
-    text = text.replace(/!\[[^\]]*\]\([^)]+\)/g, "");
-    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1");
-    // Normalize
-    var parts = text.replace(/\r/g, "").split(/\n{2,}/);
+    var text = stripJinaShell(raw);
+    var parts = text.split(/\n{2,}/);
     var count = 0;
     parts.forEach(function (block) {
       var line = block.replace(/\n+/g, " ").replace(/^#+\s*/, "").replace(/\*\*/g, "").trim();
-      if (!line) return;
-      if (line.length < 2) return;
+      if (!line || line.length < 2) return;
+      // skip leftover meta lines
+      if (/^(Title|URL Source|Warning|Markdown Content):/i.test(line)) return;
       appendParagraph(body, line);
       count++;
     });
-    if (!count) appendParagraph(body, text.trim().slice(0, 4000) || "暂无正文");
+    if (!count) {
+      var fallback = text.replace(/\n+/g, " ").trim().slice(0, 4000);
+      if (fallback) appendParagraph(body, fallback);
+      else appendParagraph(body, "暂无正文");
+    }
   }
 
   function fetchFullText(url, token, item) {
     if (!url) return;
+    if (isHardToScrape(url)) {
+      setReaderStatus("暂无法抓取原文，以下为摘要", true);
+      renderFallbackBody(item);
+      return;
+    }
     setReaderStatus("正在拉取全文…", false);
     var proxies = [
       "https://r.jina.ai/" + url,
       "https://r.jina.ai/http://" + url.replace(/^https?:\/\//, "")
     ];
-    // dedupe
     proxies = proxies.filter(function (v, i, a) { return a.indexOf(v) === i; });
 
     function tryOne(i) {
@@ -1042,14 +1105,9 @@ window.INLINE_DATA = {"updatedAt":"2026-10-07T15:56:57.039Z","updatedAtLabel":"2
         return res.text();
       }).then(function (txt) {
         if (token !== readerFetchToken) return;
-        var cleaned = String(txt || "").trim();
-        if (cleaned.length < 80) throw new Error("too short");
-        // Reject obvious error / challenge pages
-        if (/just a moment|cf-browser-verification|access denied|403 forbidden/i.test(cleaned.slice(0, 400))) {
-          throw new Error("blocked");
-        }
+        if (isBadFetchContent(txt)) throw new Error("bad content");
         setReaderStatus("", false);
-        renderFetchedText(cleaned);
+        renderFetchedText(txt);
       }).catch(function () {
         clearTimeout(timer);
         tryOne(i + 1);
@@ -1057,6 +1115,7 @@ window.INLINE_DATA = {"updatedAt":"2026-10-07T15:56:57.039Z","updatedAtLabel":"2
     }
     tryOne(0);
   }
+
 
   function openSheet(item, source) {
     pushHistory({ title: item.title, sourceName: (source && source.name) || item.sourceName || "" });
@@ -1081,7 +1140,6 @@ window.INLINE_DATA = {"updatedAt":"2026-10-07T15:56:57.039Z","updatedAtLabel":"2
       a.hidden = true;
       a.removeAttribute("href");
     }
-    setReaderStatus(item.url ? "正在拉取全文…" : "", false);
     $("sheet").hidden = false;
     document.body.style.overflow = "hidden";
     var scroll = $("readerScroll");
@@ -1092,8 +1150,16 @@ window.INLINE_DATA = {"updatedAt":"2026-10-07T15:56:57.039Z","updatedAtLabel":"2
         history.pushState({ yaozhiReader: 1 }, "", location.href);
       } catch (e) {}
     }
-    if (item.url) fetchFullText(item.url, token, item);
-    else setReaderStatus("", false);
+    if (item.url) {
+      if (isHardToScrape(item.url)) {
+        setReaderStatus("暂无法抓取原文，以下为摘要", true);
+      } else {
+        setReaderStatus("正在拉取全文…", false);
+        fetchFullText(item.url, token, item);
+      }
+    } else {
+      setReaderStatus("", false);
+    }
   }
 
   function closeSheet() {
