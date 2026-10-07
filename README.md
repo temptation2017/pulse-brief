@@ -1,3 +1,5 @@
 # 要知简报
 
-内嵌新闻摘要（早报、订阅、热榜）。打开 GitHub Pages 即可用。
+GitHub Pages 站点：点击条目在页内全屏阅读，不跳转外站。
+
+https://temptation2017.github.io/yaozhi-digest/

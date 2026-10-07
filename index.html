@@ -515,7 +515,149 @@ h1, h2, p { margin: 0; }
   color: #fff;
 }
 
-/* Sheet */
+/* Full-screen in-page reader */
+.reader {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  max-width: 480px;
+  margin: 0 auto;
+  animation: readerIn 0.22s ease;
+}
+.reader[hidden] { display: none !important; }
+@keyframes readerIn {
+  from { transform: translateX(18px); opacity: 0.55; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.reader-top {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  padding-top: max(10px, env(safe-area-inset-top, 0px));
+  border-bottom: 1px solid #1f1f21;
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.92);
+  backdrop-filter: blur(10px);
+}
+.reader-back {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--pill);
+  flex-shrink: 0;
+}
+.reader-top-title {
+  flex: 1;
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.reader-top-spacer { width: 64px; flex-shrink: 0; }
+.reader-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 18px calc(28px + var(--safe-b));
+  scrollbar-width: none;
+}
+.reader-scroll::-webkit-scrollbar { display: none; }
+.sheet-meta {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.chip-src, .chip-hot {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--pill);
+  color: #ccc;
+}
+.chip-hot:empty { display: none; }
+#sheetTitle {
+  margin: 0 0 10px;
+  font-size: 22px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+.sheet-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.sheet-tags span {
+  font-size: 12px;
+  color: #aaa;
+  background: #2c2c2e;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.reader-status {
+  font-size: 13px;
+  color: var(--muted);
+  background: #141416;
+  border: 1px solid #2a2a2c;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  line-height: 1.45;
+}
+.reader-status[hidden] { display: none !important; }
+.reader-status.warn { color: #e8c07a; border-color: #3a3220; background: #1a1610; }
+.reader-body {
+  color: #e8e8ed;
+  font-size: 16px;
+  line-height: 1.75;
+}
+.reader-body p {
+  margin: 0 0 14px;
+}
+.reader-body .bullet-block {
+  margin: 0 0 14px;
+  padding-left: 0;
+}
+.reader-body .bullet-block li {
+  position: relative;
+  padding-left: 14px;
+  margin-bottom: 8px;
+  list-style: none;
+}
+.reader-body .bullet-block li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--red);
+}
+.reader-ext {
+  margin: 22px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid #222;
+  text-align: center;
+}
+.reader-ext-link {
+  font-size: 12px;
+  color: var(--muted2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.reader-ext[hidden] { display: none !important; }
+
+/* Source list sheet (kept as half panel) */
 .sheet {
   position: fixed;
   inset: 0;
@@ -553,101 +695,6 @@ h1, h2, p { margin: 0; }
   background: #555;
   margin: 4px auto 12px;
 }
-.sheet-meta {
-  display: flex;
-  flex-direction: row;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 8px;
-}
-.chip-src, .chip-hot {
-  font-size: 12px;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: var(--pill);
-  color: #ccc;
-}
-.chip-hot:empty { display: none; }
-#sheetTitle {
-  margin: 0 0 8px;
-  font-size: 19px;
-  line-height: 1.35;
-  font-weight: 700;
-}
-.sheet-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-.sheet-tags span {
-  font-size: 12px;
-  color: #aaa;
-  background: #2c2c2e;
-  padding: 3px 8px;
-  border-radius: 6px;
-}
-.ai-box {
-  background: #111;
-  border: 1px solid #2c2c2e;
-  border-radius: 12px;
-  padding: 11px 12px;
-  margin-bottom: 10px;
-}
-.ai-label {
-  font-size: 12px;
-  color: #8b8b90;
-  margin-bottom: 7px;
-}
-#sheetBullets {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-#sheetBullets li {
-  position: relative;
-  padding-left: 12px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: #e8e8ed;
-}
-#sheetBullets li::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 7px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--red);
-}
-.sheet-summary {
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.55;
-  margin: 0 0 16px;
-}
-.sheet-actions {
-  display: flex;
-  flex-direction: row;
-  gap: 10px;
-  align-items: center;
-}
-.btn-secondary {
-  flex: 1;
-  background: var(--pill);
-  border-radius: 12px;
-  padding: 12px;
-  font-size: 15px;
-  font-weight: 650;
-}
-.btn-ghost {
-  color: var(--muted);
-  font-size: 13px;
-  text-decoration: none;
-  padding: 10px 8px;
-}
-.btn-ghost[hidden] { display: none !important; }
 
 .empty {
   color: var(--muted);
@@ -771,25 +818,24 @@ h1, h2, p { margin: 0; }
     </button>
   </nav>
 
-  <div class="sheet" id="sheet" hidden>
-    <div class="sheet-backdrop" id="sheetBackdrop"></div>
-    <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
-      <div class="sheet-grab"></div>
+  <div class="reader" id="sheet" hidden>
+    <header class="reader-top">
+      <button type="button" class="reader-back" id="sheetDismiss" aria-label="返回">← 返回</button>
+      <span class="reader-top-title">阅读</span>
+      <span class="reader-top-spacer"></span>
+    </header>
+    <div class="reader-scroll" id="readerScroll">
       <div class="sheet-meta">
         <span class="chip-src" id="sheetSource"></span>
         <span class="chip-hot" id="sheetHot"></span>
       </div>
       <h2 id="sheetTitle"></h2>
       <div class="sheet-tags" id="sheetTags"></div>
-      <div class="ai-box">
-        <div class="ai-label">要点摘要</div>
-        <ul id="sheetBullets"></ul>
-      </div>
-      <p class="sheet-summary" id="sheetSummary"></p>
-      <div class="sheet-actions">
-        <button type="button" class="btn-secondary" id="sheetDismiss">收起</button>
-        <a class="btn-ghost" id="sheetLink" href="#" target="_blank" rel="noopener noreferrer" hidden>查看原文</a>
-      </div>
+      <div class="reader-status" id="readerStatus" hidden></div>
+      <article class="reader-body" id="readerBody"></article>
+      <p class="reader-ext" id="sheetLinkWrap" hidden>
+        <a class="reader-ext-link" id="sheetLink" href="#" target="_blank" rel="noopener noreferrer">在浏览器打开原文</a>
+      </p>
     </div>
   </div>
 
@@ -892,8 +938,130 @@ window.INLINE_DATA = {"updatedAt":"2026-10-07T15:56:57.039Z","updatedAtLabel":"2
     elSub.textContent = lunar ? week + " " + lunar : week;
   }
 
+  var readerFetchToken = 0;
+  var readerOpen = false;
+  var readerPopIgnore = false;
+
+  function setReaderStatus(text, warn) {
+    var el = $("readerStatus");
+    if (!el) return;
+    if (!text) { el.hidden = true; el.textContent = ""; el.className = "reader-status"; return; }
+    el.hidden = false;
+    el.textContent = text;
+    el.className = warn ? "reader-status warn" : "reader-status";
+  }
+
+  function clearReaderBody() {
+    var body = $("readerBody");
+    if (body) while (body.firstChild) body.removeChild(body.firstChild);
+  }
+
+  function appendParagraph(parent, text) {
+    var t = String(text || "").trim();
+    if (!t) return;
+    var p = document.createElement("p");
+    p.textContent = t;
+    parent.appendChild(p);
+  }
+
+  function renderFallbackBody(item) {
+    var body = $("readerBody");
+    clearReaderBody();
+    var content = item.content || item.body || "";
+    if (content && String(content).trim()) {
+      String(content).split(/\n+/).forEach(function (line) { appendParagraph(body, line); });
+      return;
+    }
+    if (item.summary) appendParagraph(body, item.summary);
+    var bullets = (item.bullets && item.bullets.length) ? item.bullets : [];
+    if (bullets.length) {
+      var ul = document.createElement("ul");
+      ul.className = "bullet-block";
+      bullets.forEach(function (b) {
+        var li = document.createElement("li");
+        li.textContent = String(b || "");
+        ul.appendChild(li);
+      });
+      body.appendChild(ul);
+    }
+    if (!body.firstChild) appendParagraph(body, item.title || "暂无正文");
+  }
+
+  function renderFetchedText(raw) {
+    var body = $("readerBody");
+    clearReaderBody();
+    var text = String(raw || "");
+    // Strip common jina header lines
+    text = text.replace(/^Title:.*\n/i, "");
+    text = text.replace(/^URL Source:.*\n/i, "");
+    text = text.replace(/^Markdown Content:\s*/i, "");
+    text = text.replace(/^Warning:.*\n/gi, "");
+    // Drop image markdown / bare URLs-heavy noise lightly
+    text = text.replace(/!\[[^\]]*\]\([^)]+\)/g, "");
+    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1");
+    // Normalize
+    var parts = text.replace(/\r/g, "").split(/\n{2,}/);
+    var count = 0;
+    parts.forEach(function (block) {
+      var line = block.replace(/\n+/g, " ").replace(/^#+\s*/, "").replace(/\*\*/g, "").trim();
+      if (!line) return;
+      if (line.length < 2) return;
+      appendParagraph(body, line);
+      count++;
+    });
+    if (!count) appendParagraph(body, text.trim().slice(0, 4000) || "暂无正文");
+  }
+
+  function fetchFullText(url, token, item) {
+    if (!url) return;
+    setReaderStatus("正在拉取全文…", false);
+    var proxies = [
+      "https://r.jina.ai/" + url,
+      "https://r.jina.ai/http://" + url.replace(/^https?:\/\//, "")
+    ];
+    // dedupe
+    proxies = proxies.filter(function (v, i, a) { return a.indexOf(v) === i; });
+
+    function tryOne(i) {
+      if (token !== readerFetchToken) return;
+      if (i >= proxies.length) {
+        if (token !== readerFetchToken) return;
+        setReaderStatus("暂无法抓取原文，以下为摘要", true);
+        renderFallbackBody(item);
+        return;
+      }
+      var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+      var timer = setTimeout(function () { try { if (ctrl) ctrl.abort(); } catch (e) {} }, 12000);
+      fetch(proxies[i], {
+        method: "GET",
+        signal: ctrl ? ctrl.signal : undefined,
+        headers: { "Accept": "text/plain,*/*" }
+      }).then(function (res) {
+        clearTimeout(timer);
+        if (!res.ok) throw new Error("http " + res.status);
+        return res.text();
+      }).then(function (txt) {
+        if (token !== readerFetchToken) return;
+        var cleaned = String(txt || "").trim();
+        if (cleaned.length < 80) throw new Error("too short");
+        // Reject obvious error / challenge pages
+        if (/just a moment|cf-browser-verification|access denied|403 forbidden/i.test(cleaned.slice(0, 400))) {
+          throw new Error("blocked");
+        }
+        setReaderStatus("", false);
+        renderFetchedText(cleaned);
+      }).catch(function () {
+        clearTimeout(timer);
+        tryOne(i + 1);
+      });
+    }
+    tryOne(0);
+  }
+
   function openSheet(item, source) {
     pushHistory({ title: item.title, sourceName: (source && source.name) || item.sourceName || "" });
+    readerFetchToken++;
+    var token = readerFetchToken;
     $("sheetSource").textContent = (source && source.name) || item.sourceName || "资讯";
     $("sheetHot").textContent = item.hot ? ("热度 " + item.hot) : "";
     $("sheetTitle").textContent = item.title;
@@ -901,18 +1069,49 @@ window.INLINE_DATA = {"updatedAt":"2026-10-07T15:56:57.039Z","updatedAtLabel":"2
     $("sheetTags").innerHTML = tags.filter(Boolean).slice(0, 4).map(function (t) {
       return "<span>" + escapeHtml(t) + "</span>";
     }).join("");
-    var bullets = (item.bullets && item.bullets.length) ? item.bullets : [item.summary || item.title];
-    $("sheetBullets").innerHTML = bullets.slice(0, 4).map(function (b) {
-      return "<li>" + escapeHtml(b) + "</li>";
-    }).join("");
-    $("sheetSummary").textContent = item.summary || "";
+    renderFallbackBody(item);
     var a = $("sheetLink");
-    if (item.url) { a.hidden = false; a.href = item.url; }
-    else { a.hidden = true; a.removeAttribute("href"); }
+    var wrap = $("sheetLinkWrap");
+    if (item.url) {
+      if (wrap) wrap.hidden = false;
+      a.hidden = false;
+      a.href = item.url;
+    } else {
+      if (wrap) wrap.hidden = true;
+      a.hidden = true;
+      a.removeAttribute("href");
+    }
+    setReaderStatus(item.url ? "正在拉取全文…" : "", false);
     $("sheet").hidden = false;
     document.body.style.overflow = "hidden";
+    var scroll = $("readerScroll");
+    if (scroll) scroll.scrollTop = 0;
+    if (!readerOpen) {
+      readerOpen = true;
+      try {
+        history.pushState({ yaozhiReader: 1 }, "", location.href);
+      } catch (e) {}
+    }
+    if (item.url) fetchFullText(item.url, token, item);
+    else setReaderStatus("", false);
   }
-  function closeSheet() { $("sheet").hidden = true; document.body.style.overflow = ""; }
+
+  function closeSheet() {
+    readerFetchToken++;
+    if ($("sheet")) $("sheet").hidden = true;
+    document.body.style.overflow = "";
+    setReaderStatus("", false);
+    if (readerOpen) {
+      readerOpen = false;
+      if (!readerPopIgnore) {
+        try {
+          if (history.state && history.state.yaozhiReader) history.back();
+        } catch (e) {}
+      }
+    }
+    readerPopIgnore = false;
+  }
+
   function closeSourceSheet() { $("sourceSheet").hidden = true; document.body.style.overflow = ""; }
 
   function itemRow(it, i, withSummary) {
@@ -1179,8 +1378,14 @@ window.INLINE_DATA = {"updatedAt":"2026-10-07T15:56:57.039Z","updatedAtLabel":"2
         status: "ok"
       });
     };
-    if ($("sheetBackdrop")) $("sheetBackdrop").onclick = closeSheet;
     if ($("sheetDismiss")) $("sheetDismiss").onclick = closeSheet;
+    if ($("sheetLink")) $("sheetLink").onclick = function (e) { e.stopPropagation(); };
+    window.addEventListener("popstate", function () {
+      if (readerOpen && $("sheet") && !$("sheet").hidden) {
+        readerPopIgnore = true;
+        closeSheet();
+      }
+    });
     if ($("sourceBackdrop")) $("sourceBackdrop").onclick = closeSourceSheet;
     if ($("sourceSheetClose")) $("sourceSheetClose").onclick = closeSourceSheet;
     $$(".me-row").forEach(function (btn) {
@@ -1189,7 +1394,7 @@ window.INLINE_DATA = {"updatedAt":"2026-10-07T15:56:57.039Z","updatedAtLabel":"2
         if (k === "subs") navTo("plaza");
         else if (k === "about") openSheet({
           title: "关于要知简报",
-          summary: "单页离线版，数据已内嵌。点击标题只在页内展开。",
+          summary: "单页离线版，数据已内嵌。点击标题在页内阅读全文。",
           bullets: ["无需加载外部 JS/CSS/JSON", "订阅状态保存在本机", "视觉参考软媒「要知」"],
           tags: ["关于"]
         }, { name: "要知简报" });
@@ -1203,7 +1408,7 @@ window.INLINE_DATA = {"updatedAt":"2026-10-07T15:56:57.039Z","updatedAtLabel":"2
             });
           } catch (e) { openSourceSheet({ name: "阅读历史", items: [], status: "ok" }); }
         } else if (k === "settings" || k === "fav") {
-          openSheet({ title: k === "fav" ? "收藏" : "设置", summary: "单页内嵌版，刷新按钮会重绘当前数据。", bullets: ["无账号", "无外部请求"] }, { name: "我" });
+          openSheet({ title: k === "fav" ? "收藏" : "设置", summary: "单页内嵌版，刷新按钮会重绘当前数据。", bullets: ["无账号", "阅读时可选拉取公开全文代理"] }, { name: "我" });
         }
       };
     });
