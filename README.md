@@ -16,6 +16,8 @@
 
 不抓原文页，不保存、不展示正文。点标题直接在新标签页打开原文。
 
+每次刷新只保留最近 24 小时的条目：有发布时间按发布时间算，没有就按首次抓到的时间算（记在 `fetchedAt`）。超出的条目从 `data.json` 删掉，页面打开时也会再按 24 小时过滤一遍。
+
 ## 数据刷新
 
 GitHub Actions 每小时跑一次 `.github/workflows/refresh.yml`（每小时第 23 分，UTC），抓榜单、生成页面，把 `data.json`、`index.html`、`standalone.html` 提交回 `main`。也可以在 Actions 页手动点 Run workflow。

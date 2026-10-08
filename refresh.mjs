@@ -4,7 +4,7 @@
  * 抓 tophub.today 公开榜单 / 公开 RSS，每源前 10 条，写 data.json。
  * 每条只留标题、来源、发布时间、原文链接和不超过 120 字的摘要，不抓原文页。
  */
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -15,6 +15,8 @@ const PER_SOURCE = 10;
 const SUMMARY_MAX = 120;
 // 同一域名两次请求之间至少隔这么久
 const HOST_GAP_MS = 800;
+// 只保留最近 24 小时的条目：有发布时间按发布时间，没有就按首次抓到的时间
+const KEEP_MS = 24 * 3600e3;
 const UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
 
@@ -260,6 +262,31 @@ function relativeMinutes(it, i) {
   return i * 3 + 1;
 }
 
+function seenKey(srcId, it) {
+  return srcId + '|' + (it.url || it.title);
+}
+
+/** 上次 data.json 里每条的首次抓取时间，用来判断热榜条目挂了多久 */
+function loadPrevSeen() {
+  const seen = {};
+  if (!existsSync(OUT)) return seen;
+  try {
+    const prev = JSON.parse(readFileSync(OUT, 'utf8'));
+    for (const src of prev.sources || []) {
+      for (const it of src.items || []) {
+        if (it.fetchedAt) seen[seenKey(src.id, it)] = it.fetchedAt;
+      }
+    }
+  } catch {}
+  return seen;
+}
+
+function isRecent(it, now) {
+  const t = Date.parse(it.publishedAt || it.fetchedAt || '');
+  if (!t) return true;
+  return now - t <= KEEP_MS;
+}
+
 async function safe(label, fn) {
   try {
     const items = await fn();
@@ -311,6 +338,9 @@ function buildTechEvents() {
 async function main() {
   const sources = [];
   const nowIso = new Date().toISOString();
+  const now = Date.parse(nowIso);
+  const prevSeen = loadPrevSeen();
+  let dropped = 0;
 
   for (const meta of CATALOG) {
     let items = null;
@@ -332,6 +362,12 @@ async function main() {
     if (items && items.length) {
       live = true;
       status = 'ok';
+      // 记下首次抓到的时间，超过 24 小时的条目直接丢掉
+      const before = items.length;
+      items = items
+        .map((it) => ({ ...it, fetchedAt: prevSeen[seenKey(meta.id, it)] || nowIso }))
+        .filter((it) => isRecent(it, now));
+      dropped += before - items.length;
       // 补相对时间戳用于时间线
       items = items.map((it, i) => ({
         ...it,
@@ -440,7 +476,7 @@ async function main() {
   const liveN = sources.filter((s) => s.live).length;
   const deadN = sources.filter((s) => !s.live).length;
   console.log(`写入 ${OUT}`);
-  console.log(`live ${liveN} · 暂不可用 ${deadN} · 早报 ${data.morning.length} · 时间线 ${data.timeline.length}`);
+  console.log(`live ${liveN} · 暂不可用 ${deadN} · 早报 ${data.morning.length} · 时间线 ${data.timeline.length} · 超过 24 小时丢弃 ${dropped}`);
   console.log(
     'live:',
     sources.filter((s) => s.live).map((s) => `${s.name}${s.items.length}`).join(' · ')
