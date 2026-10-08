@@ -1,0 +1,44 @@
+name: 刷新数据
+
+on:
+  schedule:
+    # 每小时第 23 分（UTC），避开整点高峰
+    - cron: '23 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 抓榜单和正文
+        run: node refresh.mjs
+
+      - name: 生成单页
+        run: node build.mjs
+
+      - name: 提交回 main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data.json content.json index.html standalone.html
+          if git diff --cached --quiet; then
+            echo "数据没有变化"
+            exit 0
+          fi
+          git commit -m "数据刷新 $(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M')"
+          # 期间有人推过代码就先变基，冲突时保留本次生成的数据
+          git push || (git pull --rebase -X theirs origin main && git push)
