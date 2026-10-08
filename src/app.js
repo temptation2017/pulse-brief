@@ -1,13 +1,9 @@
 (function () {
   "use strict";
-  var SUBS_KEY = "yaozhi_subs_v3";
-  var LAYOUT_KEY = "yaozhi_layout_v4";
-  var HIST_KEY = "yaozhi_hist_v3";
-  var THEME_KEY = "yaozhi_theme";
-  // 正文：cid -> { k, p, via, cut }。内嵌一部分，其余同源加载 content.json
-  var CONTENT = window.INLINE_CONTENT || {};
-  var contentState = "idle"; // idle | loading | done | fail
-  var contentWaiters = [];
+  var SUBS_KEY = "pulse_subs_v1";
+  var LAYOUT_KEY = "pulse_layout_v1";
+  var HIST_KEY = "pulse_hist_v1";
+  var THEME_KEY = "pulse_theme";
   var CATS = ["全部", "综合", "科技", "娱乐", "财经", "汽车"];
   var DATA = null;
   var activeCat = "全部";
@@ -86,18 +82,8 @@
     elSub.textContent = lunar ? week + " " + lunar : week;
   }
 
-  var readerFetchToken = 0;
   var readerOpen = false;
   var readerPopIgnore = false;
-
-  function setReaderStatus(text, warn) {
-    var el = $("readerStatus");
-    if (!el) return;
-    if (!text) { el.hidden = true; el.textContent = ""; el.className = "reader-status"; return; }
-    el.hidden = false;
-    el.textContent = text;
-    el.className = warn ? "reader-status warn" : "reader-status";
-  }
 
   function clearReaderBody() {
     var body = $("readerBody");
@@ -112,19 +98,6 @@
     parent.appendChild(p);
   }
 
-  function setVia(html) {
-    var el = $("readerVia");
-    if (!el) return;
-    if (!html) { el.hidden = true; el.innerHTML = ""; return; }
-    el.hidden = false;
-    el.innerHTML = html;
-  }
-  function setEnd(text) {
-    var el = $("readerEnd");
-    if (!el) return;
-    el.hidden = !text;
-    el.textContent = text || "";
-  }
   function setLink(url, label) {
     var a = $("sheetLink");
     var wrap = $("sheetLinkWrap");
@@ -133,7 +106,7 @@
       if (wrap) wrap.hidden = false;
       a.hidden = false;
       a.href = url;
-      a.textContent = label || "在浏览器打开原文";
+      a.textContent = label || "阅读原文";
     } else {
       if (wrap) wrap.hidden = true;
       a.hidden = true;
@@ -141,47 +114,32 @@
     }
   }
 
-  function renderSkeleton() {
-    var body = $("readerBody");
-    clearReaderBody();
-    var box = document.createElement("div");
-    box.className = "reader-loading";
-    for (var i = 0; i < 6; i++) box.appendChild(document.createElement("p"));
-    body.appendChild(box);
+  function isSafeUrl(url) {
+    return /^https?:\/\//i.test(String(url || ""));
   }
 
-  /** 用预抓好的正文渲染 */
-  function renderContent(item, c) {
-    var body = $("readerBody");
-    clearReaderBody();
-    (c.p || []).forEach(function (line) { appendParagraph(body, line); });
-    if (c.k === "related" && c.via) {
-      setVia("<b>相关报道 · " + escapeHtml(c.via.name || "其他媒体") + "</b>" +
-        (c.via.title ? '<span class="via-title">' + escapeHtml(c.via.title) + "</span>" : ""));
-      setLink(c.via.url || item.url, "在浏览器打开这篇报道");
-    } else if (c.k === "intro") {
-      setVia("<b>" + (/douban/.test(item.url || "") ? "影片简介" : "简介") + "</b>");
-      setLink(item.url, "在浏览器打开原页面");
-    } else {
-      setVia("");
-      setLink(item.url, "在浏览器打开原文");
-    }
-    setEnd(c.cut ? "全文较长，这里节选了前面的部分" : "");
-    setReaderStatus("", false);
+  /** 新闻条目：直接去原文 */
+  function openItem(item, source) {
+    if (!item) return;
+    if (!isSafeUrl(item.url)) { openSheet(item, source); return; }
+    pushHistory({ title: item.title, sourceName: (source && source.name) || item.sourceName || "" });
+    var w = window.open(item.url, "_blank", "noopener,noreferrer");
+    if (!w) location.href = item.url;
   }
 
-  /** 没有正文时：摘要 + 热度，口气平和一点 */
-  function renderFallbackBody(item, note) {
+  /** 说明类内容（关于、设置、科技大事）用页内面板 */
+  function openSheet(item, source) {
+    $("sheetSource").textContent = (source && source.name) || item.sourceName || "";
+    $("sheetHot").textContent = item.hot ? ("热度 " + item.hot) : "";
+    $("sheetTitle").textContent = item.title;
+    var tags = item.tags || [(source && source.cat), (source && source.name)].filter(Boolean);
+    $("sheetTags").innerHTML = tags.filter(Boolean).slice(0, 4).map(function (t) {
+      return "<span>" + escapeHtml(t) + "</span>";
+    }).join("");
     var body = $("readerBody");
     clearReaderBody();
-    setVia("");
-    setEnd("");
-    var summary = item.summary && item.summary !== item.title ? item.summary : "";
-    if (summary && !/^当前热度/.test(summary)) appendParagraph(body, summary);
-    var bullets = (item.bullets || []).filter(function (b) {
-      return b && !/来自公开热榜聚合/.test(b) && b !== summary;
-    });
-    if (item.hot && !bullets.length) bullets.push("当前热度 " + item.hot);
+    if (item.summary && item.summary !== item.title) appendParagraph(body, item.summary);
+    var bullets = item.bullets || [];
     if (bullets.length) {
       var ul = document.createElement("ul");
       ul.className = "bullet-block";
@@ -192,173 +150,7 @@
       });
       body.appendChild(ul);
     }
-    if (note) {
-      var p = document.createElement("p");
-      p.className = "hint";
-      p.textContent = note;
-      body.appendChild(p);
-    }
-    if (!body.firstChild) appendParagraph(body, item.title || "");
-    setLink(item.url, "在浏览器打开原文");
-  }
-
-  function isHardToScrape(url) {
-    return /zhihu\.com|weibo\.(com|cn)|weixin\.qq\.com|xiaohongshu\.com|xhslink\.com|douyin\.com|toutiao\.com|baidu\.com\/s|tieba\.baidu|bilibili\.com|okjike|tiktok\.com|twitter\.com|\/\/x\.com\//i.test(String(url || ""));
-  }
-
-  function stripJinaShell(raw) {
-    var text = String(raw || "").replace(/\r/g, "");
-    text = text.replace(/^(Title|URL Source|Published Time|Warning):\s*.*$/gim, "");
-    text = text.replace(/^Markdown Content:\s*/gim, "");
-    text = text.replace(/!\[[^\]]*\]\([^)]+\)/g, "");
-    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1");
-    return text.trim();
-  }
-
-  function isBadFetchContent(raw) {
-    var rawStr = String(raw || "").trim();
-    if (!rawStr) return true;
-    var badPatterns = [
-      /captcha/i,
-      /authorized to access/i,
-      /please make sure you are authorized/i,
-      /请您登录/,
-      /登录后查看/,
-      /更多专业优质内容/,
-      /请先登录/,
-      /该内容需登录/,
-      /验证码/,
-      /访问异常/,
-      /\b403\b.*forbidden/i,
-      /403 forbidden/i,
-      /just a moment/i,
-      /cloudflare/i,
-      /cf-browser-verification/i,
-      /access denied/i,
-      /sign in to continue/i,
-      /enable javascript and cookies/i
-    ];
-    for (var i = 0; i < badPatterns.length; i++) {
-      if (badPatterns[i].test(rawStr)) return true;
-    }
-    if (/^Warning:\s*/im.test(rawStr)) return true;
-    if (/Title:\s*https?:\/\//i.test(rawStr) && /Warning:/i.test(rawStr)) return true;
-    if (/URL Source:\s*https?:\/\//i.test(rawStr) && /请您登录|登录后查看|CAPTCHA|captcha/i.test(rawStr)) return true;
-
-    var cleaned = stripJinaShell(rawStr);
-    var plain = cleaned.replace(/\s+/g, "");
-    if (plain.length < 80) return true;
-
-    var lines = cleaned.split(/\n+/).map(function (l) { return l.trim(); }).filter(Boolean);
-    if (lines.length) {
-      var urlish = lines.filter(function (l) {
-        return /^https?:\/\//i.test(l) || /^(Title|URL Source):/i.test(l);
-      });
-      if (urlish.length / lines.length > 0.5 && plain.length < 400) return true;
-    }
-    // leftover login/captcha crumbs after strip
-    if (/登录|验证码|captcha|warning/i.test(cleaned) && plain.length < 220) return true;
-    return false;
-  }
-
-  function renderFetchedText(raw) {
-    var body = $("readerBody");
-    clearReaderBody();
-    var text = stripJinaShell(raw);
-    var parts = text.split(/\n{2,}/);
-    var count = 0;
-    parts.forEach(function (block) {
-      var line = block.replace(/\n+/g, " ").replace(/^#+\s*/, "").replace(/\*\*/g, "").trim();
-      if (!line || line.length < 2) return;
-      // skip leftover meta lines
-      if (/^(Title|URL Source|Warning|Markdown Content):/i.test(line)) return;
-      appendParagraph(body, line);
-      count++;
-    });
-    if (!count) {
-      var fallback = text.replace(/\n+/g, " ").trim().slice(0, 4000);
-      if (fallback) appendParagraph(body, fallback);
-      else appendParagraph(body, "暂无正文");
-    }
-  }
-
-  /** 兜底：文章型链接在浏览器里再试一次 r.jina.ai */
-  function fetchFullText(url, token, item) {
-    setReaderStatus("正在获取原文…", false);
-    renderSkeleton();
-    var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
-    var timer = setTimeout(function () { try { if (ctrl) ctrl.abort(); } catch (e) {} }, 10000);
-    fetch("https://r.jina.ai/" + url, {
-      signal: ctrl ? ctrl.signal : undefined,
-      headers: { "Accept": "text/plain,*/*" }
-    }).then(function (res) {
-      clearTimeout(timer);
-      if (!res.ok) throw new Error("http " + res.status);
-      return res.text();
-    }).then(function (txt) {
-      if (token !== readerFetchToken) return;
-      if (isBadFetchContent(txt)) throw new Error("bad content");
-      setReaderStatus("", false);
-      renderFetchedText(txt);
-      setLink(url, "在浏览器打开原文");
-    }).catch(function () {
-      clearTimeout(timer);
-      if (token !== readerFetchToken) return;
-      setReaderStatus("", false);
-      renderFallbackBody(item, "这篇的正文还没准备好，先看要点，原文链接在下方。");
-    });
-  }
-
-  function whenContentReady(cb) {
-    if (contentState === "done" || contentState === "fail") return cb();
-    contentWaiters.push(cb);
-    loadContent();
-  }
-
-  function showBody(item, token) {
-    var c = item.cid && CONTENT[item.cid];
-    if (c && c.p && c.p.length) { renderContent(item, c); return; }
-    // 列表说有正文，但 content.json 还没到：等一下
-    if (item.cid && item.ck && contentState !== "done" && contentState !== "fail") {
-      setReaderStatus("正在载入正文…", false);
-      renderSkeleton();
-      whenContentReady(function () {
-        if (token !== readerFetchToken) return;
-        var c2 = CONTENT[item.cid];
-        if (c2 && c2.p && c2.p.length) renderContent(item, c2);
-        else fallback(item, token);
-      });
-      return;
-    }
-    fallback(item, token);
-  }
-
-  function fallback(item, token) {
-    setReaderStatus("", false);
-    if (item.url && !isHardToScrape(item.url)) {
-      fetchFullText(item.url, token, item);
-      return;
-    }
-    var note = "";
-    if (item.url) note = isHardToScrape(item.url) && /weibo|baidu|toutiao|douyin|tieba/.test(item.url)
-      ? "这是一条热搜话题，暂时还没有找到成篇的报道，下次刷新会再找。"
-      : "这条暂时没有可读的正文，原链接在下方。";
-    renderFallbackBody(item, note);
-  }
-
-  function openSheet(item, source) {
-    pushHistory({ title: item.title, sourceName: (source && source.name) || item.sourceName || "" });
-    readerFetchToken++;
-    var token = readerFetchToken;
-    $("sheetSource").textContent = (source && source.name) || item.sourceName || "资讯";
-    $("sheetHot").textContent = item.hot ? ("热度 " + item.hot) : "";
-    $("sheetTitle").textContent = item.title;
-    var tags = item.tags || [(source && source.cat), (source && source.name)].filter(Boolean);
-    $("sheetTags").innerHTML = tags.filter(Boolean).slice(0, 4).map(function (t) {
-      return "<span>" + escapeHtml(t) + "</span>";
-    }).join("");
-    setReaderStatus("", false);
-    showBody(item, token);
+    setLink(isSafeUrl(item.url) ? item.url : "", "阅读原文");
     $("sheet").hidden = false;
     document.body.style.overflow = "hidden";
     var scroll = $("readerScroll");
@@ -366,21 +158,19 @@
     if (!readerOpen) {
       readerOpen = true;
       try {
-        history.pushState({ yaozhiReader: 1 }, "", location.href);
+        history.pushState({ pulseSheet: 1 }, "", location.href);
       } catch (e) {}
     }
   }
 
   function closeSheet() {
-    readerFetchToken++;
     if ($("sheet")) $("sheet").hidden = true;
     document.body.style.overflow = "";
-    setReaderStatus("", false);
     if (readerOpen) {
       readerOpen = false;
       if (!readerPopIgnore) {
         try {
-          if (history.state && history.state.yaozhiReader) history.back();
+          if (history.state && history.state.pulseSheet) history.back();
         } catch (e) {}
       }
     }
@@ -403,7 +193,7 @@
       li.onclick = function (e) {
         e.preventDefault();
         var it = src.items[Number(li.getAttribute("data-i"))];
-        if (it) openSheet(it, src);
+        if (it) openItem(it, src);
       };
     });
   }
@@ -435,7 +225,7 @@
       li.onclick = function (e) {
         e.preventDefault();
         var it = items[Number(li.getAttribute("data-mi"))];
-        if (it) openSheet(it, sourceById(it.sourceId) || { name: it.sourceName });
+        if (it) openItem(it, sourceById(it.sourceId) || { name: it.sourceName });
       };
     });
   }
@@ -492,7 +282,7 @@
       li.onclick = function (e) {
         e.preventDefault();
         var it = items[Number(li.getAttribute("data-ti"))];
-        if (it) openSheet(it, sourceById(it.sourceId) || { name: it.sourceName });
+        if (it) openItem(it, sourceById(it.sourceId) || { name: it.sourceName });
       };
     });
   }
@@ -565,7 +355,7 @@
       var hint = $("updatedHint");
       if (hint) {
         hint.textContent = (DATA && DATA.updatedAtLabel)
-          ? ("数据更新于 " + DATA.updatedAtLabel + "（北京时间）· 点标题页内阅读")
+          ? ("数据更新于 " + DATA.updatedAtLabel + "（北京时间）· 点标题打开原文")
           : "已加载";
       }
       var meSub = $("meSub");
@@ -678,11 +468,15 @@
         var k = btn.getAttribute("data-me");
         if (k === "subs") navTo("plaza");
         else if (k === "about") openSheet({
-          title: "关于要知简报",
-          summary: "公开热榜摘要页，视觉参考软媒「要知」。正文由 GitHub Actions 每小时在服务器端预先抓好，点标题直接在页内读。",
-          bullets: ["文章类来源直接抓原文；热搜词配一篇相关报道，并标明出处", "订阅、外观设置只存在本机", "没有账号，不收集任何数据"],
+          title: "关于 PulseBrief",
+          summary: "PulseBrief（脉搏简报）把公开热榜和 RSS 的标题汇在一页，每小时更新一次。点标题跳转原文阅读。",
+          bullets: [
+            "只展示标题、来源、发布时间、原文链接和不超过 120 字的摘要，不转载正文",
+            "标题和摘要的版权归原媒体，本站只做链接聚合；权利人可在 GitHub 提 issue 要求移除",
+            "订阅、外观设置只存在本机；没有账号，不收集任何数据"
+          ],
           tags: ["关于"]
-        }, { name: "要知简报" });
+        }, { name: "PulseBrief" });
         else if (k === "history") {
           try {
             var arr = JSON.parse(localStorage.getItem(HIST_KEY) || "[]");
@@ -716,29 +510,12 @@
     };
   }
 
-  /* ---------- 同源加载最新数据和正文 ---------- */
+  /* ---------- 同源加载最新数据 ---------- */
   function getJson(name, ver) {
     var url = name + "?v=" + encodeURIComponent(ver || Date.now());
     return fetch(url, { cache: ver ? "default" : "no-store" }).then(function (r) {
       if (!r.ok) throw new Error("HTTP " + r.status);
       return r.json();
-    });
-  }
-
-  function loadContent(force) {
-    if (contentState === "loading") return;
-    if (contentState === "done" && !force) return;
-    contentState = "loading";
-    getJson("content.json", force ? "" : (DATA && DATA.updatedAt)).then(function (j) {
-      var items = (j && j.items) || {};
-      for (var k in items) if (Object.prototype.hasOwnProperty.call(items, k)) CONTENT[k] = items[k];
-      contentState = "done";
-    }).catch(function () {
-      contentState = "fail";
-    }).then(function () {
-      var ws = contentWaiters;
-      contentWaiters = [];
-      ws.forEach(function (cb) { try { cb(); } catch (e) {} });
     });
   }
 
@@ -749,7 +526,6 @@
       var newer = !DATA || !DATA.updatedAt || (d.updatedAt && d.updatedAt > DATA.updatedAt);
       if (newer) {
         applyData(d);
-        loadContent(true);
       } else if (manual) {
         renderAll();
       }
@@ -796,19 +572,14 @@
     document.addEventListener("visibilitychange", function () { if (!document.hidden) applyTheme(); });
   }
 
-  // 启动：先用内嵌数据，随后同源拉最新 data.json / content.json
+  // 启动：先用内嵌数据，随后同源拉最新 data.json
   setDateHeader();
   bind();
   bindTheme();
-  applyData(window.INLINE_DATA || window.__YAOZHI_FALLBACK__ || { sources: [], morning: [], timeline: [], techEvents: [] });
+  applyData(window.INLINE_DATA || { sources: [], morning: [], timeline: [], techEvents: [] });
   try {
     var tab = new URLSearchParams(location.search).get("tab");
     if (tab === "plaza" || tab === "me" || tab === "home") navTo(tab);
   } catch (e) {}
-  if (location.protocol !== "file:") {
-    loadContent();
-    loadData(false);
-  } else {
-    contentState = "fail";
-  }
+  if (location.protocol !== "file:") loadData(false);
 })();
