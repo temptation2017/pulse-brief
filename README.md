@@ -47,17 +47,14 @@ lib/extract.mjs          正文抽取和坏内容过滤
 lib/content.mjs          按来源类型找正文、相关报道匹配
 build.mjs                拼单页
 src/                     页面模板、样式、脚本
-.github/workflows/refresh.yml   每小时刷新并提交（见下方「启用定时刷新」）
+.github/workflows/refresh.yml   每小时刷新并提交（见下方「定时刷新」）
 ```
 
-## 启用定时刷新
+## 定时刷新
 
-工作流文件暂放在 `ci/refresh.yml`。推送它需要带 `workflow` 权限的凭据，当前推送用的凭据没有这个权限。启用方法任选其一：
+工作流是 `.github/workflows/refresh.yml`（「刷新数据」），每小时第 23 分跑一次（cron `23 * * * *`，UTC；北京时间同样是每小时第 23 分）。也可以在 Actions 页选「刷新数据」手动点 Run workflow。
 
-- 在 GitHub 网页上新建文件 `.github/workflows/refresh.yml`，把 `ci/refresh.yml` 的内容粘进去提交；
-- 或用带 `workflow` 权限的登录（比如 `gh auth login` 网页授权）在本地 `git mv ci/refresh.yml .github/workflows/refresh.yml` 后推送。
-
-启用后每小时自动跑一次，也可以在 Actions 页手动点 Run workflow。
+每次运行：`node refresh.mjs` 抓榜单和正文，`node build.mjs` 生成单页，再把 `data.json`、`content.json`、`index.html`、`standalone.html` 提交回 `main`，提交信息形如「数据刷新 2026-10-08 08:06」。数据没变化就不提交。
 
 ## 抓取礼仪
 
@@ -66,3 +63,7 @@ src/                     页面模板、样式、脚本
 ## 隐私
 
 没有账号、没有统计脚本。订阅、阅读历史、外观设置都只存在浏览器 localStorage。仓库里没有任何密钥，Actions 只用 GitHub 自带的 `GITHUB_TOKEN`。
+
+## 许可证
+
+代码以 [MIT](LICENSE) 许可证发布。许可证只覆盖代码，页面里聚合的文章内容版权归原作者和原媒体。
