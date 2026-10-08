@@ -6,7 +6,8 @@
 <meta name="theme-color" id="metaTheme" content="#000000" />
 <meta name="color-scheme" content="dark light" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<title>要知简报</title>
+<title>PulseBrief · 脉搏简报</title>
+<meta name="description" content="公开热榜与 RSS 标题聚合，点标题跳转原文。" />
 <style>
 /*__STYLE__*/
 </style>
@@ -14,7 +15,7 @@
 /* 主题：页面绘制前先定深浅色，避免闪一下 */
 (function () {
   var mode = "auto";
-  try { mode = localStorage.getItem("yaozhi_theme") || "auto"; } catch (e) {}
+  try { mode = localStorage.getItem("pulse_theme") || "auto"; } catch (e) {}
   var t = mode;
   if (mode !== "light" && mode !== "dark") {
     var h = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Shanghai", hour: "2-digit", hourCycle: "h23" }).format(new Date()));
@@ -83,6 +84,7 @@
         </article>
 
         <p class="foot-hint" id="updatedHint">加载中…</p>
+        <p class="foot-hint copyright-note">标题和摘要版权归原媒体，本站只做链接聚合，点标题阅读原文。如需移除，请在 GitHub 提 issue。</p>
         <div class="bottom-spacer"></div>
       </div>
     </section>
@@ -100,9 +102,9 @@
 
     <section class="page" id="page-me" data-page="me" hidden>
       <header class="me-header">
-        <div class="avatar">知</div>
+        <div class="avatar">脉</div>
         <div>
-          <h1>要知读者</h1>
+          <h1>PulseBrief</h1>
           <p class="me-sub" id="meSub">本地简报 · 无需登录</p>
         </div>
       </header>
@@ -122,7 +124,7 @@
         <li><button type="button" class="me-row" data-me="about"><span>关于</span><span class="chev">›</span></button></li>
       </ul>
       <p class="me-theme-tip" id="themeTip">自动：北京时间 7:00–19:00 浅色，其余时间深色</p>
-      <p class="foot-hint">正文由服务器提前抓好，点标题直接在页内读，不跳外站。</p>
+      <p class="foot-hint">只显示标题和简短摘要，点标题跳转原文。标题和摘要版权归原媒体，本站只做链接聚合，如需移除请在 GitHub 提 issue。</p>
     </section>
   </div>
 
@@ -144,7 +146,7 @@
   <div class="reader" id="sheet" hidden>
     <header class="reader-top">
       <button type="button" class="reader-back" id="sheetDismiss" aria-label="返回">← 返回</button>
-      <span class="reader-top-title">阅读</span>
+      <span class="reader-top-title">详情</span>
       <span class="reader-top-spacer"></span>
     </header>
     <div class="reader-scroll" id="readerScroll">
@@ -154,12 +156,9 @@
       </div>
       <h2 id="sheetTitle"></h2>
       <div class="sheet-tags" id="sheetTags"></div>
-      <div class="reader-via" id="readerVia" hidden></div>
-      <div class="reader-status" id="readerStatus" hidden></div>
       <article class="reader-body" id="readerBody"></article>
-      <p class="reader-end" id="readerEnd" hidden></p>
       <p class="reader-ext" id="sheetLinkWrap" hidden>
-        <a class="reader-ext-link" id="sheetLink" href="#" target="_blank" rel="noopener noreferrer">在浏览器打开原文</a>
+        <a class="reader-ext-link" id="sheetLink" href="#" target="_blank" rel="noopener noreferrer">阅读原文</a>
       </p>
     </div>
   </div>

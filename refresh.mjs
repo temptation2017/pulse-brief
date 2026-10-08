@@ -1,23 +1,20 @@
 #!/usr/bin/env node
 /**
- * 要知简报 · 数据刷新（无 npm 依赖，Node 20+）
- * 1. 抓 tophub.today 公开榜单 / 公开 RSS，每源前 10 条
- * 2. 给每条预抓正文，写进 content.json（data.json 只放列表）
+ * PulseBrief 数据刷新（无 npm 依赖，Node 20+）
+ * 抓 tophub.today 公开榜单 / 公开 RSS，每源前 10 条，写 data.json。
+ * 每条只留标题、来源、发布时间、原文链接和不超过 120 字的摘要，不抓原文页。
  */
-import { writeFileSync, readFileSync, existsSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { pool } from './lib/net.mjs';
-import { contentFor, finalize, kindOf, articlePool } from './lib/content.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT = join(__dirname, 'data.json');
-const OUT_CONTENT = join(__dirname, 'content.json');
 const PER_SOURCE = 10;
-// 正文缓存有效期：原文类 3 天，相关报道 6 小时（热点会变）
-const TTL_FULL = 72 * 3600e3;
-const TTL_RELATED = 6 * 3600e3;
+// 摘要上限（字）
+const SUMMARY_MAX = 120;
+// 同一域名两次请求之间至少隔这么久
+const HOST_GAP_MS = 800;
 const UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
 
@@ -52,7 +49,17 @@ const CATALOG = [
   { id: 'eeo', name: '经济观察网', cat: '财经', color: '#003366', icon: '经', placeholder: true },
 ];
 
+const hostNext = new Map();
+async function waitHost(url) {
+  const host = new URL(url).host;
+  const now = Date.now();
+  const at = Math.max(now, hostNext.get(host) || 0);
+  hostNext.set(host, at + HOST_GAP_MS);
+  if (at > now) await new Promise((r) => setTimeout(r, at - now));
+}
+
 async function fetchText(url, headers = {}) {
+  await waitHost(url);
   const res = await fetch(url, {
     headers: { 'User-Agent': UA, Accept: '*/*', ...headers },
     redirect: 'follow',
@@ -64,6 +71,7 @@ async function fetchText(url, headers = {}) {
 
 async function fetchJsonPost(url, form) {
   const body = new URLSearchParams(form).toString();
+  await waitHost(url);
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -104,7 +112,7 @@ function stripHtml(html) {
   return t;
 }
 
-function summarize(text, max = 140) {
+function summarize(text, max = SUMMARY_MAX) {
   const t = stripHtml(text)
     .replace(/^IT之家\s*\d+\s*月\s*\d+\s*日消息[，,：:]?\s*/i, '')
     .replace(/^Matrix首页推荐[\s\S]*?观点。\s*/i, '')
@@ -126,19 +134,6 @@ function summarize(text, max = 140) {
   return out;
 }
 
-function bulletsFrom(text, title) {
-  const s = summarize(text, 220) || title;
-  const parts = s.split(/(?<=[。！？!?；;])/).map((x) => x.trim()).filter(Boolean);
-  const bullets = [];
-  for (const p of parts) {
-    if (bullets.length >= 3) break;
-    if (p.length < 6) continue;
-    bullets.push(p.length > 80 ? p.slice(0, 79) + '…' : p);
-  }
-  if (!bullets.length) bullets.push(title);
-  return bullets;
-}
-
 function parseRssItems(xml, limit = 10) {
   const items = [];
   const blocks = xml.match(/<item[\s>][\s\S]*?<\/item>/gi) || [];
@@ -151,19 +146,15 @@ function parseRssItems(xml, limit = 10) {
         (block.match(/<link[^>]+href=["']([^"']+)["']/i) || [])[1] ||
         ''
     ).trim();
+    // 只用 description，不读 content:encoded（那是全文）
     const desc =
-      (block.match(/<description[^>]*>([\s\S]*?)<\/description>/i) || [])[1] ||
-      (block.match(/<content:encoded[^>]*>([\s\S]*?)<\/content:encoded>/i) ||
-        [])[1] ||
-      '';
+      (block.match(/<description[^>]*>([\s\S]*?)<\/description>/i) || [])[1] || '';
     const pub =
       (block.match(/<pubDate[^>]*>([\s\S]*?)<\/pubDate>/i) || [])[1] || '';
     if (!title) continue;
-    const summary = summarize(desc) || title;
     items.push({
       title,
-      summary,
-      bullets: bulletsFrom(desc || summary, title),
+      summary: summarize(desc),
       url: link,
       publishedAt: pub ? new Date(pub).toISOString() : null,
     });
@@ -182,13 +173,10 @@ function parseTophubHtml(html, limit = 12) {
     const title = decodeEntities(m[2]).trim();
     if (!title || title.includes("'+") || title.includes('v.title')) continue;
     const hot = stripHtml(m[3]).trim();
-    const summary = hot ? `当前热度 ${hot}。` : title;
+    const summary = hot ? `当前热度 ${hot}。` : '';
     items.push({
       title,
       summary,
-      bullets: hot
-        ? [`当前热度 ${hot}`, '来自公开热榜聚合，详情可在页内展开查看。']
-        : [title],
       url: m[1],
       hot: hot || undefined,
     });
@@ -204,10 +192,7 @@ function parseTophubHtml(html, limit = 12) {
     const hot = stripHtml(m[3]).trim().replace(/热度$/, '');
     items.push({
       title,
-      summary: hot ? `当前热度 ${hot}。` : title,
-      bullets: hot
-        ? [`当前热度 ${hot}`, '来自公开热榜聚合。']
-        : [title],
+      summary: hot ? `当前热度 ${hot}。` : '',
       url: m[1],
       hot: hot || undefined,
     });
@@ -248,13 +233,10 @@ async function fetchTophub(hash, limit = 12) {
     if (!it?.title) continue;
     const hot = it.extra || '';
     const desc = it.description || '';
-    const summary =
-      summarize(desc) ||
-      (hot ? `当前热度 ${hot}。` : it.title);
+    const summary = summarize(desc) || (hot ? `当前热度 ${hot}。` : '');
     items.push({
       title: String(it.title).trim(),
       summary,
-      bullets: bulletsFrom(desc || summary, it.title),
       url: it.url || '',
       hot: hot || undefined,
       publishedAt: null,
@@ -383,8 +365,6 @@ async function main() {
     throw new Error(`只拿到 ${liveCount} 个源，放弃本次写入`);
   }
 
-  const coverage = await attachContent(sources);
-
   // 早报：从默认订阅源各取若干，凑满 10 条
   const defaultIds = CATALOG.filter((c) => c.defaultOn).map((c) => c.id);
   const morning = [];
@@ -393,8 +373,7 @@ async function main() {
   for (const id of defaultIds) {
     const src = byId[id];
     if (!src?.items?.length) continue;
-    // 有正文的排前面，早报点开就能读
-    const picks = [...src.items.filter((x) => x.ck), ...src.items.filter((x) => !x.ck)].slice(0, 3);
+    const picks = src.items.slice(0, 3);
     for (const it of picks) {
       const key = it.title.slice(0, 24);
       if (used.has(key)) continue;
@@ -426,7 +405,7 @@ async function main() {
   // 24小时热榜时间线：混排各 live 源前几条
   const timeline = [];
   for (const src of sources.filter((s) => s.live)) {
-    [...src.items.filter((x) => x.ck), ...src.items.filter((x) => !x.ck)].slice(0, 4).forEach((it, i) => {
+    src.items.slice(0, 4).forEach((it, i) => {
       timeline.push({
         ...it,
         sourceId: src.id,
@@ -457,7 +436,6 @@ async function main() {
     })),
   };
 
-  data.coverage = coverage;
   writeFileSync(OUT, JSON.stringify(data), 'utf8');
   const liveN = sources.filter((s) => s.live).length;
   const deadN = sources.filter((s) => !s.live).length;
@@ -471,122 +449,6 @@ async function main() {
     'placeholder:',
     sources.filter((s) => !s.live).map((s) => s.name).join(' · ')
   );
-}
-
-/* ---------------- 正文 ---------------- */
-
-function cidOf(it, srcId) {
-  return createHash('sha1').update(srcId + '|' + (it.url || it.title)).digest('hex').slice(0, 10);
-}
-
-function loadPrevContent() {
-  if (process.env.FRESH === '1' || !existsSync(OUT_CONTENT)) return {};
-  try {
-    return JSON.parse(readFileSync(OUT_CONTENT, 'utf8')).items || {};
-  } catch {
-    return {};
-  }
-}
-
-function isTrivialSummary(it) {
-  return !it.summary || it.summary === it.title || /^当前热度/.test(it.summary);
-}
-
-function firstSentences(paras, max = 110) {
-  const text = paras.join('').replace(/^IT之家\s*\d+\s*月\s*\d+\s*日消息[，,：:]?\s*/, '');
-  if (text.length <= max) return text;
-  const cut = text.slice(0, max);
-  const end = Math.max(cut.lastIndexOf('。'), cut.lastIndexOf('！'), cut.lastIndexOf('？'));
-  return end > 30 ? cut.slice(0, end + 1) : cut + '…';
-}
-
-async function attachContent(sources) {
-  const prev = loadPrevContent();
-  const now = Date.now();
-  const store = {};
-  const started = Date.now();
-
-  const live = sources.filter((s) => s.live);
-  const jobs = [];
-  for (const src of live) {
-    for (const it of src.items) {
-      it.cid = cidOf(it, src.id);
-      jobs.push({ it, src, kind: kindOf(src.id) });
-    }
-  }
-
-  const run = async ({ it, src }) => {
-    const old = prev[it.cid];
-    if (old && old.t) {
-      const ttl = old.k === 'related' ? TTL_RELATED : TTL_FULL;
-      if (now - old.t < ttl) return old;
-    }
-    let got = null;
-    try {
-      got = finalize(await contentFor(it, src));
-    } catch (e) {
-      got = null;
-    }
-    if (got) got.t = now;
-    return got;
-  };
-
-  const save = (job, got) => {
-    if (!got) return;
-    store[job.it.cid] = got;
-    job.it.ck = got.k;
-    if (got.via) job.it.via = { name: got.via.name, title: got.via.title };
-    if (got.k === 'full' && isTrivialSummary(job.it)) job.it.summary = firstSentences(got.p);
-  };
-
-  // 先抓文章型，填好相关报道的匹配池；再处理热搜词、问题、视频
-  const first = jobs.filter((j) => ['article', 'douban', 'jike'].includes(j.kind));
-  const second = jobs.filter((j) => !['article', 'douban', 'jike'].includes(j.kind));
-
-  const r1 = await pool(first, 6, run);
-  first.forEach((j, i) => {
-    save(j, r1[i]);
-    if (r1[i] && r1[i].k === 'full' && j.kind === 'article') {
-      articlePool.push({ title: j.it.title, url: j.it.url, sourceName: j.src.name, paras: r1[i].p });
-    }
-  });
-  console.log(`正文第一轮完成 ${first.length} 条，用时 ${Math.round((Date.now() - started) / 1000)}s`);
-
-  const r2 = await pool(second, 4, run);
-  second.forEach((j, i) => save(j, r2[i]));
-  console.log(`正文第二轮完成 ${second.length} 条，用时 ${Math.round((Date.now() - started) / 1000)}s`);
-
-  // 覆盖率
-  const coverage = {};
-  let all = 0;
-  let hit = 0;
-  for (const src of live) {
-    const n = src.items.length;
-    const c = src.items.filter((it) => it.ck).length;
-    const kinds = {};
-    src.items.forEach((it) => {
-      if (it.ck) kinds[it.ck] = (kinds[it.ck] || 0) + 1;
-    });
-    coverage[src.id] = { name: src.name, total: n, withContent: c, kinds };
-    all += n;
-    hit += c;
-  }
-  coverage._all = { total: all, withContent: hit, rate: all ? Math.round((hit / all) * 1000) / 10 : 0 };
-
-  const totalChars = Object.values(store).reduce((a, x) => a + x.p.join('').length, 0);
-  writeFileSync(
-    OUT_CONTENT,
-    JSON.stringify({ updatedAt: new Date().toISOString(), items: store }),
-    'utf8'
-  );
-  console.log(`写入 ${OUT_CONTENT}：${Object.keys(store).length} 条，${totalChars} 字`);
-  console.log('正文覆盖率：');
-  for (const [id, c] of Object.entries(coverage)) {
-    if (id === '_all') continue;
-    console.log(`  ${c.name.padEnd(10, '　')} ${c.withContent}/${c.total}  ${JSON.stringify(c.kinds)}`);
-  }
-  console.log(`  合计 ${hit}/${all} = ${coverage._all.rate}%`);
-  return coverage;
 }
 
 main().catch((e) => {
