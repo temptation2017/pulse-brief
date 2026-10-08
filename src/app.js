@@ -584,6 +584,15 @@
     if (!data.morning) data.morning = [];
     if (!data.timeline) data.timeline = [];
     if (!data.techEvents) data.techEvents = [];
+    // 只显示最近 24 小时的条目，刷新停了也不会挂着旧闻
+    var cutoff = Date.now() - 24 * 3600e3;
+    var recent = function (it) {
+      var t = Date.parse(it.publishedAt || it.fetchedAt || "");
+      return !t || t >= cutoff;
+    };
+    data.morning = data.morning.filter(recent);
+    data.timeline = data.timeline.filter(recent);
+    data.sources.forEach(function (s) { if (s.items) s.items = s.items.filter(recent); });
     DATA = data;
     try { if (!localStorage.getItem(SUBS_KEY)) saveSubs(defaultSubs()); } catch (e) {}
     renderAll();

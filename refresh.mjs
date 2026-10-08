@@ -18,6 +18,8 @@ const PER_SOURCE = 10;
 // 正文缓存有效期：原文类 3 天，相关报道 6 小时（热点会变）
 const TTL_FULL = 72 * 3600e3;
 const TTL_RELATED = 6 * 3600e3;
+// 只保留最近 24 小时的条目：有发布时间按发布时间，没有就按首次抓到的时间
+const KEEP_MS = 24 * 3600e3;
 const UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
 
@@ -278,6 +280,31 @@ function relativeMinutes(it, i) {
   return i * 3 + 1;
 }
 
+function seenKey(srcId, it) {
+  return srcId + '|' + (it.url || it.title);
+}
+
+/** 上次 data.json 里每条的首次抓取时间，用来判断热榜条目挂了多久 */
+function loadPrevSeen() {
+  const seen = {};
+  if (!existsSync(OUT)) return seen;
+  try {
+    const prev = JSON.parse(readFileSync(OUT, 'utf8'));
+    for (const src of prev.sources || []) {
+      for (const it of src.items || []) {
+        if (it.fetchedAt) seen[seenKey(src.id, it)] = it.fetchedAt;
+      }
+    }
+  } catch {}
+  return seen;
+}
+
+function isRecent(it, now) {
+  const t = Date.parse(it.publishedAt || it.fetchedAt || '');
+  if (!t) return true;
+  return now - t <= KEEP_MS;
+}
+
 async function safe(label, fn) {
   try {
     const items = await fn();
@@ -329,6 +356,9 @@ function buildTechEvents() {
 async function main() {
   const sources = [];
   const nowIso = new Date().toISOString();
+  const now = Date.parse(nowIso);
+  const prevSeen = loadPrevSeen();
+  let dropped = 0;
 
   for (const meta of CATALOG) {
     let items = null;
@@ -350,6 +380,12 @@ async function main() {
     if (items && items.length) {
       live = true;
       status = 'ok';
+      // 记下首次抓到的时间，超过 24 小时的条目直接丢掉
+      const before = items.length;
+      items = items
+        .map((it) => ({ ...it, fetchedAt: prevSeen[seenKey(meta.id, it)] || nowIso }))
+        .filter((it) => isRecent(it, now));
+      dropped += before - items.length;
       // 补相对时间戳用于时间线
       items = items.map((it, i) => ({
         ...it,
@@ -462,7 +498,7 @@ async function main() {
   const liveN = sources.filter((s) => s.live).length;
   const deadN = sources.filter((s) => !s.live).length;
   console.log(`写入 ${OUT}`);
-  console.log(`live ${liveN} · 暂不可用 ${deadN} · 早报 ${data.morning.length} · 时间线 ${data.timeline.length}`);
+  console.log(`live ${liveN} · 暂不可用 ${deadN} · 早报 ${data.morning.length} · 时间线 ${data.timeline.length} · 超过 24 小时丢弃 ${dropped}`);
   console.log(
     'live:',
     sources.filter((s) => s.live).map((s) => `${s.name}${s.items.length}`).join(' · ')
